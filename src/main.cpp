@@ -17,13 +17,14 @@
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 
 ComLogger xLogger;
 xTaskHandle MPUHandle;
 boolean fMPUReady=false;
+//int yaw=0;
 
-//float yaw=0;
+float yaw=0;
 
 const int led1 = 2; // Pin of the LED
 
@@ -41,7 +42,7 @@ static void vMotionTask(void *pvParameters) {
     xLogger.vAddLogMsg("Motion Task started.");    
     for (;;) { 
       vTaskDelay(2000); 
-      float yaw=0;
+      //float yaw=0;
 
       if(MpuDrv::Mpu.Acquire()) {
         MpuDrv::Mpu.process();           
@@ -98,7 +99,7 @@ void setup() {
   pinMode(led1, OUTPUT);
   Serial.begin(115200);
   Wire.begin();
-  //Wire.begin(21 , 22, 400000);
+  Wire1.begin(18 , 19);
 
   delay(2000);
 
@@ -108,28 +109,28 @@ void setup() {
   xLogger.Init();
   MpuDrv::Mpu.init();
 
-  // // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  // if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-  //   Serial.println(F("SSD1306 allocation failed"));
-  //   for(;;); // Don't proceed, loop forever
-  // }
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
 
-  // // Show initial display buffer contents on the screen --
-  // // the library initializes this with an Adafruit splash screen.
-  // display.display();
-  // delay(2000); // Pause for 2 seconds
+  // Show initial display buffer contents on the screen --
+  // the library initializes this with an Adafruit splash screen.
+  display.display();
+  delay(2000); // Pause for 2 seconds
 
-  // // Clear the buffer
-  // display.clearDisplay();
+  // Clear the buffer
+  display.clearDisplay();
 
-  // display.setTextSize(1);
-  // display.setTextColor(WHITE);
-  // display.setCursor(0,0);
-  // //display.print("Starting...");
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  //display.print("Starting...");
 
-  // //display.drawPixel(10, 10, WHITE);
+  //display.drawPixel(10, 10, WHITE);
 
-  // display.display();
+  display.display();
 
   delay(2000); // Pause for 2 seconds
 
@@ -182,9 +183,17 @@ void hello_task(void *pvParameter)
 
 void disp_task(void *pvParameter)
 {
+  char buf[32];
   for(;;){ // infinite loop
       // Pause the task again for 2000 ms
       vTaskDelay(2000 / portTICK_PERIOD_MS);
+      strcpy(buf, "Yaw: ");
+      //itoa(yaw, buf);
+
+      // display.clearDisplay(); 
+      // display.setCursor(0,0);
+      // display.print(buf);
+      // display.display();
 
       //Serial.print("Task DISP is running on: ");
       //Serial.println(xPortGetCoreID());
