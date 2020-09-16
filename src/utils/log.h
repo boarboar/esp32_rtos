@@ -1,6 +1,7 @@
 
 #define CLOG_MSG_SZ 80
 #define CLOG_Q_SZ 16
+#define CLOG_PB_SZ 24
 
 class ComLogger {  
   public:
@@ -17,12 +18,15 @@ class ComLogger {
   struct AMessage
   {
     char ucMessageID;
+    TickType_t xTick;
     char ucData[ CLOG_MSG_SZ ];
   };
   struct AMessage txMessage;
   struct AMessage rxMessage;
   QueueHandle_t xLogQueue;
   xSemaphoreHandle xLogFree;
+  char ucLastProcMsgID;
+  char prtbuf[CLOG_PB_SZ];
 };
 
 void itoa(int n, char s[]);

@@ -15,6 +15,7 @@ void ComLogger::Init() {
 
     txMessage.ucMessageID=0;
     txMessage.ucData[0]=0;
+    ucLastProcMsgID = (char)-1;
     
     Serial.println("Logger OK");
 }
@@ -26,6 +27,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg) {
       if(pucMsg) 
         strncpy(txMessage.ucData, pucMsg, CLOG_MSG_SZ);          
       else *txMessage.ucData=0;  
+      txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -40,6 +42,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg, int16_t i) {
       else *txMessage.ucData=0;        
       strncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
       itoa_cat(i, txMessage.ucData);
+      txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -60,7 +63,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int16_t i1, const char *pucMsg2,
       }
       strncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
       itoa_cat(i2, txMessage.ucData);
-      
+      txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -80,7 +83,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int16_t i1, int16_t i2, int16_t 
       itoa_cat(i2, txMessage.ucData);
       strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
       itoa_cat(i3, txMessage.ucData);
-      
+      txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -100,7 +103,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
       ltoa_cat(i2, txMessage.ucData);
       strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
       ltoa_cat(i3, txMessage.ucData);
-      
+      txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -120,7 +123,8 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
       strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
       ltoa_cat(i3, txMessage.ucData);
       strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
-      ltoa_cat(i4, txMessage.ucData);      
+      ltoa_cat(i4, txMessage.ucData);  
+      txMessage.xTick = xTaskGetTickCount();    
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
     }
@@ -128,9 +132,19 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
 void ComLogger::Process() {  
   if( xQueueReceive( xLogQueue, &rxMessage, ( TickType_t ) 10 ) )
   {
-    Serial.print((int)rxMessage.ucMessageID);
+    if((char)(rxMessage.ucMessageID - ucLastProcMsgID) != 1) {
+      Serial.print("...skipped...");
+      Serial.println((int)(rxMessage.ucMessageID - ucLastProcMsgID));
+    }
+    //Serial.print((int)rxMessage.ucMessageID);
+    //Serial.print(" : ");
+    // dd hh:mm:ss:ttt
+    long t = (long)rxMessage.xTick*portTICK_PERIOD_MS;
+    //sprintf(buf, "%d ")
+    Serial.print(t);
     Serial.print(" : ");
     Serial.println(rxMessage.ucData);
+    ucLastProcMsgID = rxMessage.ucMessageID;
     vTaskDelay(100);         
    }        
 }
