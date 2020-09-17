@@ -41,18 +41,18 @@ static void vSerialOutTask(void *pvParameters) {
 static void vWiFiTask(void *pvParameters) {
   xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
      
-  WiFi.begin("ssid", "password");
-  xLogger.vAddLogMsg("Connecting to  ...");
+  //WiFi.begin("ssid", "password");
+  // xLogger.vAddLogMsg("Connecting to  ...");
 
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED && i++ < 40) { vTaskDelay(200); }
+  // int i = 0;
+  // while (WiFi.status() != WL_CONNECTED && i++ < 40) { vTaskDelay(200); }
 
   
-  if(WiFi.status() != WL_CONNECTED) {
-    xLogger.vAddLogMsg("Failed to connect");
-  } else {
-    xLogger.vAddLogMsg("Connected");
-  }
+  // if(WiFi.status() != WL_CONNECTED) {
+  //   xLogger.vAddLogMsg("Failed to connect");
+  // } else {
+  //   xLogger.vAddLogMsg("Connected");
+  // }
 
 
     for (;;) {
@@ -66,7 +66,7 @@ static void vMotionTask(void *pvParameters) {
     //int16_t val[16];
     xLogger.vAddLogMsg("Motion Task started.");    
     for (;;) { 
-      vTaskDelay(2000); 
+      vTaskDelay(200); 
       //float yaw=0;
 
       if(MpuDrv::Mpu.Acquire()) {
@@ -99,7 +99,9 @@ static void vI2C_Task(void *pvParameters) {
       }
       if(cnt>100) {
         // evry 200 ms refresh display
+        unsigned long t0 = xTaskGetTickCount();
         display.display();
+        xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
         cnt=0;
       }
     }
@@ -130,7 +132,10 @@ void setup() {
       Serial.print(mac[i],HEX);
       if(i<5) Serial.print(F(":"));
     }
-    
+  Serial.println();
+
+  //WiFi.begin("ssid", "password");
+
   xLogger.Init();
   MpuDrv::Mpu.init();
 
@@ -217,7 +222,7 @@ void disp_task(void *pvParameter)
   char buf[32];
   for(;;){ // infinite loop
       // Pause the task again for 2000 ms
-      vTaskDelay(2000 / portTICK_PERIOD_MS);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
       strcpy(buf, "Yaw: ");
       if(fMPUReady)
         itoa_cat((int)yaw, buf);
@@ -225,13 +230,5 @@ void disp_task(void *pvParameter)
       display.clearDisplay(); 
       display.setCursor(0,0);
       display.print(buf);
-      // display.display();
-
-      //Serial.print("Task DISP is running on: ");
-      //Serial.println(xPortGetCoreID());
-      //xLogger.vAddLogMsg("Task DISP is running on ", xPortGetCoreID());
-
-        //xLogger.vAddLogMsg("Yaw ", yaw);
-
     }
 }

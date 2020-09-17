@@ -137,9 +137,9 @@ void ComLogger::Process() {
   
   if( xQueueReceive( xLogQueue, &rxMessage, ( TickType_t ) 10 ) )
   {
-    if((char)(rxMessage.ucMessageID - ucLastProcMsgID) != 1) {
+    if((unsigned char)(rxMessage.ucMessageID - ucLastProcMsgID) != 1) {
       Serial.print("...skipped...");
-      Serial.println((int)(rxMessage.ucMessageID - ucLastProcMsgID));
+      Serial.println((int)((unsigned char)(rxMessage.ucMessageID - ucLastProcMsgID)));
     }
     //Serial.print((int)rxMessage.ucMessageID);
     //Serial.print(" : ");

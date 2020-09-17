@@ -25,7 +25,7 @@ class ComLogger {
   struct AMessage rxMessage;
   QueueHandle_t xLogQueue;
   xSemaphoreHandle xLogFree;
-  char ucLastProcMsgID;
+  unsigned char ucLastProcMsgID;
   char prtbuf[ CLOG_PB_SZ ];
 };
 
