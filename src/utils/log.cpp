@@ -130,6 +130,11 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
     }
 }
 void ComLogger::Process() {  
+  const long mss = 1000;
+  const long msm = 60*mss;
+  const long msh = 60*msm;
+  const long msd = 24*msh;
+  
   if( xQueueReceive( xLogQueue, &rxMessage, ( TickType_t ) 10 ) )
   {
     if((char)(rxMessage.ucMessageID - ucLastProcMsgID) != 1) {
@@ -140,9 +145,20 @@ void ComLogger::Process() {
     //Serial.print(" : ");
     // dd hh:mm:ss:ttt
     long t = (long)rxMessage.xTick*portTICK_PERIOD_MS;
+    
     //sprintf(buf, "%d ")
-    Serial.print(t);
-    Serial.print(" : ");
+    //Serial.print(t);
+    //Serial.print(" : ");
+
+    ltoa((t%msd)/msh, prtbuf); //hrs
+    strncat(prtbuf, ":", CLOG_PB_SZ);          
+    ltoa_cat((t%msh)/msm, prtbuf); //min
+    strncat(prtbuf, ":", CLOG_PB_SZ);          
+    ltoa_cat((t%msm)/mss, prtbuf); //sec
+    strncat(prtbuf, ".", CLOG_PB_SZ);          
+    ltoa_cat(t%mss, prtbuf); //ms
+    strncat(prtbuf, " ", CLOG_PB_SZ);          
+    Serial.print(prtbuf);
     Serial.println(rxMessage.ucData);
     ucLastProcMsgID = rxMessage.ucMessageID;
     vTaskDelay(100);         

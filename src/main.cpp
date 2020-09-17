@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <WiFi.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "utils/log.h"
@@ -17,7 +18,7 @@
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 ComLogger xLogger;
 xTaskHandle MPUHandle;
@@ -37,6 +38,30 @@ static void vSerialOutTask(void *pvParameters) {
     }
 }
 
+static void vWiFiTask(void *pvParameters) {
+  xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
+     
+  WiFi.begin("ssid", "password");
+  xLogger.vAddLogMsg("Connecting to  ...");
+
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED && i++ < 40) { vTaskDelay(200); }
+
+  
+  if(WiFi.status() != WL_CONNECTED) {
+    xLogger.vAddLogMsg("Failed to connect");
+  } else {
+    xLogger.vAddLogMsg("Connected");
+  }
+
+
+    for (;;) {
+       //xLogger.Process();
+       vTaskDelay(200);
+    }
+}
+
+
 static void vMotionTask(void *pvParameters) {
     //int16_t val[16];
     xLogger.vAddLogMsg("Motion Task started.");    
@@ -54,10 +79,12 @@ static void vMotionTask(void *pvParameters) {
     }
 }
 
-static void vIMU_Task(void *pvParameters) {
-    int16_t mpu_res=0;    
-    xLogger.vAddLogMsg("IMU Task started.");
+static void vI2C_Task(void *pvParameters) {
+    int16_t mpu_res=0; 
+    int16_t cnt = 0;   
+    xLogger.vAddLogMsg("I2C Task started.");
     for (;;) { 
+      cnt++;
       vTaskDelay(2); 
       if(MpuDrv::Mpu.Acquire()) {
         mpu_res = MpuDrv::Mpu.cycle_dt();       
@@ -67,27 +94,15 @@ static void vIMU_Task(void *pvParameters) {
         // IMU settled
         fMPUReady=true;
         xLogger.vAddLogMsg("IMU settled!");    
-        xTaskCreate(vMotionTask,
-                "TaskMotion",
-                1024,
-                NULL,
-                tskIDLE_PRIORITY + 2, // med
-                NULL);
-    
+        xTaskCreate(vMotionTask, "TaskMotion", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
         //break;
       }
+      if(cnt>100) {
+        // evry 200 ms refresh display
+        display.display();
+        cnt=0;
+      }
     }
-    // xLogger.vAddLogMsg("IMU Task completed.");
-    
-    // xTaskCreate(vMotionTask,
-    //             "TaskMotion",
-    //             1024,
-    //             NULL,
-    //             tskIDLE_PRIORITY + 2, // med
-    //             NULL);
-
-    // vTaskDelete(MPUHandle);
-
 }
 
 
@@ -99,12 +114,22 @@ void setup() {
   pinMode(led1, OUTPUT);
   Serial.begin(115200);
   Wire.begin();
-  Wire1.begin(18 , 19);
+  //Wire1.begin(18 , 19);
 
   delay(2000);
 
   Serial.print("Tick = ");
   Serial.println(portTICK_PERIOD_MS);
+
+  byte mac[6]; 
+  uint8_t i = 0;
+  WiFi.macAddress(mac);
+
+  Serial.print(F("MAC: "));
+  for(i=0; i<6; i++) {
+      Serial.print(mac[i],HEX);
+      if(i<5) Serial.print(F(":"));
+    }
     
   xLogger.Init();
   MpuDrv::Mpu.init();
@@ -141,15 +166,21 @@ void setup() {
                 tskIDLE_PRIORITY + 1, // low
                 NULL); 
 
-  xTaskCreate(vIMU_Task,
+  xTaskCreate(vI2C_Task,
                 "TaskIMU",
                 1024,
                 NULL,
                 tskIDLE_PRIORITY + 3, // max
                 &MPUHandle);
 
+  xTaskCreate(vWiFiTask,
+                "TaskWiFi",
+                2048,
+                NULL,
+                tskIDLE_PRIORITY + 2, // med
+                NULL); 
 
-  xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
+  //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
   xTaskCreate(&disp_task, "disp_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
 }
@@ -188,11 +219,12 @@ void disp_task(void *pvParameter)
       // Pause the task again for 2000 ms
       vTaskDelay(2000 / portTICK_PERIOD_MS);
       strcpy(buf, "Yaw: ");
-      //itoa(yaw, buf);
+      if(fMPUReady)
+        itoa_cat((int)yaw, buf);
 
-      // display.clearDisplay(); 
-      // display.setCursor(0,0);
-      // display.print(buf);
+      display.clearDisplay(); 
+      display.setCursor(0,0);
+      display.print(buf);
       // display.display();
 
       //Serial.print("Task DISP is running on: ");

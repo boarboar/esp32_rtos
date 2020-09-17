@@ -26,7 +26,7 @@ class ComLogger {
   QueueHandle_t xLogQueue;
   xSemaphoreHandle xLogFree;
   char ucLastProcMsgID;
-  char prtbuf[CLOG_PB_SZ];
+  char prtbuf[ CLOG_PB_SZ ];
 };
 
 void itoa(int n, char s[]);
