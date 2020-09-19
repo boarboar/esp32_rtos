@@ -5,6 +5,7 @@
 #include <Adafruit_SSD1306.h>
 #include "utils/log.h"
 #include "imu/mpu.h"
+#include "cred.inc"
 
 //  Hold-down the “BOOT” button in your ESP32 board
 //  After you see the  “Connecting….” message in your Arduino IDE, release the finger from the “BOOT” button
@@ -41,22 +42,25 @@ static void vSerialOutTask(void *pvParameters) {
 static void vWiFiTask(void *pvParameters) {
   xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
      
-  //WiFi.begin("ssid", "password");
-  // xLogger.vAddLogMsg("Connecting to  ...");
+  WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
+  xLogger.vAddLogMsg("Connecting to  ...");
 
-  // int i = 0;
-  // while (WiFi.status() != WL_CONNECTED && i++ < 40) { vTaskDelay(200); }
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED && i++ < 20) { 
+    vTaskDelay(400); 
+    xLogger.vAddLogMsg("Connecting...");
+    }
 
   
-  // if(WiFi.status() != WL_CONNECTED) {
-  //   xLogger.vAddLogMsg("Failed to connect");
-  // } else {
-  //   xLogger.vAddLogMsg("Connected");
-  // }
+  if(WiFi.status() != WL_CONNECTED) {
+    xLogger.vAddLogMsg("Failed to connect");
+  } else {
+    xLogger.vAddLogMsg("Connected");
+  }
 
 
     for (;;) {
-       //xLogger.Process();
+       //check status - TODO
        vTaskDelay(200);
     }
 }
@@ -73,7 +77,7 @@ static void vMotionTask(void *pvParameters) {
         MpuDrv::Mpu.process();           
         yaw=MpuDrv::Mpu.getYaw()*180.0 / PI;
         MpuDrv::Mpu.Release();
-        xLogger.vAddLogMsg("Yaw ", yaw);
+        //xLogger.vAddLogMsg("Yaw ", yaw);
       }
 
     }
@@ -97,9 +101,19 @@ static void vI2C_Task(void *pvParameters) {
         xTaskCreate(vMotionTask, "TaskMotion", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
         //break;
       }
-      if(cnt>100) {
-        // evry 200 ms refresh display
+      if(cnt>500) {
+        // evry 1000 ms refresh display
         unsigned long t0 = xTaskGetTickCount();
+        char buf[32];
+        strcpy(buf, "Yaw: ");
+        if(fMPUReady) {
+          itoa_cat((int)yaw, buf);
+          xLogger.vAddLogMsg("Yaw ", (int)yaw);
+        }
+
+        display.clearDisplay(); 
+        display.setCursor(0,0);
+        display.print(buf);
         display.display();
         xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
         cnt=0;
@@ -108,36 +122,39 @@ static void vI2C_Task(void *pvParameters) {
 }
 
 
+void hello_task(void *pvParameter)
+{
+  for(;;){ // infinite loop
 
-void hello_task(void *pvParameter);
-void disp_task(void *pvParameter);
+      digitalWrite(led1, HIGH);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+      digitalWrite(led1, LOW);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+      xLogger.vAddLogMsg("Task HELLO is running on ", xPortGetCoreID());
+    }
+}
+
+void disp_task(void *pvParameter)
+{
+  char buf[32];
+  for(;;){ // infinite loop
+      // Pause the task again for 2000 ms
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      strcpy(buf, "Yaw: ");
+      if(fMPUReady)
+        itoa_cat((int)yaw, buf);
+
+      display.clearDisplay(); 
+      display.setCursor(0,0);
+      display.print(buf);
+    }
+}
 
 void setup() {
   pinMode(led1, OUTPUT);
   Serial.begin(115200);
   Wire.begin();
   //Wire1.begin(18 , 19);
-
-  delay(2000);
-
-  Serial.print("Tick = ");
-  Serial.println(portTICK_PERIOD_MS);
-
-  byte mac[6]; 
-  uint8_t i = 0;
-  WiFi.macAddress(mac);
-
-  Serial.print(F("MAC: "));
-  for(i=0; i<6; i++) {
-      Serial.print(mac[i],HEX);
-      if(i<5) Serial.print(F(":"));
-    }
-  Serial.println();
-
-  //WiFi.begin("ssid", "password");
-
-  xLogger.Init();
-  MpuDrv::Mpu.init();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
@@ -162,31 +179,66 @@ void setup() {
 
   display.display();
 
-  delay(2000); // Pause for 2 seconds
+
+  Serial.print("Tick = ");
+  Serial.println(portTICK_PERIOD_MS);
+
+  byte mac[6]; 
+  uint8_t i = 0;
+  WiFi.macAddress(mac);
+
+  Serial.print(F("MAC: "));
+
+  for(i=0; i<6; i++) {
+      Serial.print(mac[i],HEX);
+      if(i<5) Serial.print(F(":"));
+    }
+  Serial.println();
+
+  // WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
+
+  // Serial.print("Connecting to  ...");
+
+  // while (WiFi.status() != WL_CONNECTED && i++ < 40) { 
+  //   Serial.print(".");
+  //   delay(200); 
+  //   }
+
+  // Serial.println();
+  // if(WiFi.status() != WL_CONNECTED) {
+  //   Serial.println("Failed to connect");
+  // } else {
+  //   Serial.println("Connected");
+  // }
+
+  xLogger.Init();
+  MpuDrv::Mpu.init();
+
+  
 
   xTaskCreate(vSerialOutTask,
                 "TaskSO",
-                configMINIMAL_STACK_SIZE,
+                2048,
                 NULL,
                 tskIDLE_PRIORITY + 1, // low
                 NULL); 
 
   xTaskCreate(vI2C_Task,
                 "TaskIMU",
-                1024,
+                8192,
                 NULL,
                 tskIDLE_PRIORITY + 3, // max
                 &MPUHandle);
 
   xTaskCreate(vWiFiTask,
                 "TaskWiFi",
-                2048,
+                8192,
                 NULL,
                 tskIDLE_PRIORITY + 2, // med
                 NULL); 
 
   //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
-  xTaskCreate(&disp_task, "disp_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
+  //xTaskCreate(&disp_task, "disp_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
 }
 
@@ -194,41 +246,3 @@ void loop() {
   // put your main code here, to run repeatedly:
 }
 
-void hello_task(void *pvParameter)
-{
-  for(;;){ // infinite loop
-
-      // Turn the LED on
-      digitalWrite(led1, HIGH);
-
-      // Pause the task for 500ms
-      vTaskDelay(500 / portTICK_PERIOD_MS);
-
-      // Turn the LED off
-      digitalWrite(led1, LOW);
-
-      // Pause the task again for 500ms
-      vTaskDelay(500 / portTICK_PERIOD_MS);
-
-      //Serial.print("Task HELLO is running on: ");
-      //Serial.println(xPortGetCoreID());
-
-      xLogger.vAddLogMsg("Task HELLO is running on ", xPortGetCoreID());
-    }
-}
-
-void disp_task(void *pvParameter)
-{
-  char buf[32];
-  for(;;){ // infinite loop
-      // Pause the task again for 2000 ms
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-      strcpy(buf, "Yaw: ");
-      if(fMPUReady)
-        itoa_cat((int)yaw, buf);
-
-      display.clearDisplay(); 
-      display.setCursor(0,0);
-      display.print(buf);
-    }
-}

@@ -269,7 +269,7 @@ void MpuDrv::process() {
   Quaternion q, q0;
   VectorFloat gravity;    
   //char buf[20];
-  xLogger.vAddLogMsg("QT ", q16[0], q16[1], q16[2], q16[3]);
+  //xLogger.vAddLogMsg("QT ", q16[0], q16[1], q16[2], q16[3]);
   mpu.dmpGetQuaternion(&q, q16);
   mpu.dmpGetQuaternion(&q0, q16_0);
   q0=q0.getConjugate();
