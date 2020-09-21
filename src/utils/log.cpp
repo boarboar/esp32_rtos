@@ -33,6 +33,22 @@ void ComLogger::vAddLogMsg(const char *pucMsg) {
     }
 }
 
+void ComLogger::vAddLogMsg(const char *pucMsg, const char *ps) {  
+  if ( xSemaphoreTake( xLogFree, ( portTickType ) 10 ) == pdTRUE )
+    {
+      txMessage.ucMessageID++;     
+      if(pucMsg) 
+        strncpy(txMessage.ucData, pucMsg, CLOG_MSG_SZ);          
+      else *txMessage.ucData=0;  
+      strncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
+      if(ps != NULL)
+        strncat(txMessage.ucData, ps, CLOG_MSG_SZ);          
+      txMessage.xTick = xTaskGetTickCount();
+      xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
+      xSemaphoreGive( xLogFree );
+    }
+}
+
 void ComLogger::vAddLogMsg(const char *pucMsg, int16_t i) {  
    if ( xSemaphoreTake( xLogFree, ( portTickType ) 10 ) == pdTRUE )
     {
@@ -150,13 +166,13 @@ void ComLogger::Process() {
     //Serial.print(t);
     //Serial.print(" : ");
 
-    ltoa((t%msd)/msh, prtbuf); //hrs
+    _ltoa((t%msd)/msh, prtbuf, 2); //hrs
     strncat(prtbuf, ":", CLOG_PB_SZ);          
-    ltoa_cat((t%msh)/msm, prtbuf); //min
+    ltoa_cat((t%msh)/msm, prtbuf, 2); //min
     strncat(prtbuf, ":", CLOG_PB_SZ);          
-    ltoa_cat((t%msm)/mss, prtbuf); //sec
+    ltoa_cat((t%msm)/mss, prtbuf, 2); //sec
     strncat(prtbuf, ".", CLOG_PB_SZ);          
-    ltoa_cat(t%mss, prtbuf); //ms
+    ltoa_cat(t%mss, prtbuf, 4); //ms
     strncat(prtbuf, " ", CLOG_PB_SZ);          
     Serial.print(prtbuf);
     Serial.println(rxMessage.ucData);
@@ -181,7 +197,7 @@ void ComLogger::Process() {
 }  
 
 /* itoa:  convert n to characters in s */
-void itoa(int n, char s[])
+void _itoa(int n, char s[], int zn)
  {
      int i, sign;
 
@@ -191,6 +207,9 @@ void itoa(int n, char s[])
      do {       /* generate digits in reverse order */
          s[i++] = n % 10 + '0';   /* get next digit */
      } while ((n /= 10) > 0);     /* delete it */
+
+     while(i<zn) s[i++] = '0';
+     
      if (sign < 0)
          s[i++] = '-';
      s[i] = '\0';
@@ -200,7 +219,7 @@ void itoa(int n, char s[])
 
 /* itoa:  convert n to characters in s */
 
-void ltoa(int32_t n, char s[])
+void _ltoa(int32_t n, char s[], int zn)
  {
      int32_t i, sign;
 
@@ -210,6 +229,9 @@ void ltoa(int32_t n, char s[])
      do {       /* generate digits in reverse order */
          s[i++] = n % 10 + '0';   /* get next digit */
      } while ((n /= 10) > 0);     /* delete it */
+
+     while(i<zn) s[i++] = '0';
+
      if (sign < 0)
          s[i++] = '-';
      s[i] = '\0';

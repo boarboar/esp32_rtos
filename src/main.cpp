@@ -41,34 +41,42 @@ static void vSerialOutTask(void *pvParameters) {
 
 static void vWiFiTask(void *pvParameters) {
   xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
-     
-  WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
-  xLogger.vAddLogMsg("Connecting to  ...");
 
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED && i++ < 20) { 
-    vTaskDelay(400); 
-    xLogger.vAddLogMsg("Connecting...");
+  for (;;) {   
+    WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
+    xLogger.vAddLogMsg("Connecting to ", CRED_WIFI_SSID);
+
+    int i = 0;
+    while (WiFi.status() != WL_CONNECTED && i++ < 20) { 
+      vTaskDelay(400); 
+      xLogger.vAddLogMsg("Connecting...");
+      }
+    
+    if(WiFi.status() != WL_CONNECTED) {
+      xLogger.vAddLogMsg("Failed to connect with status ", WiFi.status());
+      vTaskDelay(60000L); 
+      continue;
+    } else {
+      xLogger.vAddLogMsg("Connected to ", CRED_WIFI_SSID);
+      xLogger.vAddLogMsg("With IP ", WiFi.localIP());
     }
-
-  
-  if(WiFi.status() != WL_CONNECTED) {
-    xLogger.vAddLogMsg("Failed to connect");
-  } else {
-    xLogger.vAddLogMsg("Connected");
-  }
 
 
     for (;;) {
-       //check status - TODO
-       vTaskDelay(200);
+      vTaskDelay(200);
+      if(WiFi.status() != WL_CONNECTED) {
+        xLogger.vAddLogMsg("Connection lost with status ", WiFi.status());
+        break;
+      }
     }
+
+  }
 }
 
 
 static void vMotionTask(void *pvParameters) {
     //int16_t val[16];
-    xLogger.vAddLogMsg("Motion Task started.");    
+    xLogger.vAddLogMsg("Motion task started on core# ", xPortGetCoreID());    
     for (;;) { 
       vTaskDelay(200); 
       //float yaw=0;
@@ -114,6 +122,7 @@ static void vI2C_Task(void *pvParameters) {
         display.clearDisplay(); 
         display.setCursor(0,0);
         display.print(buf);
+
         display.display();
         xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
         cnt=0;
@@ -216,26 +225,28 @@ void setup() {
 
   
 
-  xTaskCreate(vSerialOutTask,
+  xTaskCreatePinnedToCore(vSerialOutTask,
                 "TaskSO",
                 2048,
                 NULL,
                 tskIDLE_PRIORITY + 1, // low
-                NULL); 
+                NULL, 0); 
 
-  xTaskCreate(vI2C_Task,
-                "TaskIMU",
-                8192,
-                NULL,
-                tskIDLE_PRIORITY + 3, // max
-                &MPUHandle);
-
-  xTaskCreate(vWiFiTask,
+  xTaskCreatePinnedToCore(vWiFiTask,
                 "TaskWiFi",
                 8192,
                 NULL,
                 tskIDLE_PRIORITY + 2, // med
-                NULL); 
+                NULL, 0); 
+
+  xTaskCreatePinnedToCore(vI2C_Task,
+                "TaskIMU",
+                8192,
+                NULL,
+                tskIDLE_PRIORITY + 3, // max
+                &MPUHandle, 1);
+
+
 
   //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
   //xTaskCreate(&disp_task, "disp_task", 2048, NULL, tskIDLE_PRIORITY, NULL);

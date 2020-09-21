@@ -1,12 +1,13 @@
 
 #define CLOG_MSG_SZ 80
-#define CLOG_Q_SZ 16
+#define CLOG_Q_SZ 32
 #define CLOG_PB_SZ 24
 
 class ComLogger {  
   public:
     void Init();    
     void vAddLogMsg(const char *pucMsg=NULL);
+    void vAddLogMsg(const char *pucMsg, const char *ps);
     void vAddLogMsg(const char *pucMsg, int16_t i);
     void vAddLogMsg(const char *pucMsg1, int16_t i1, const char *pucMsg2, int16_t i2);
     //void vAddLogMsg(const char *pucMsg1, int16_t i1, int16_t i2, int16_t i3);
@@ -29,8 +30,8 @@ class ComLogger {
   char prtbuf[ CLOG_PB_SZ ];
 };
 
-void itoa(int n, char s[]);
-void ltoa(int32_t n, char s[]);
+void _itoa(int n, char s[], int zn=0);
+void _ltoa(int32_t n, char s[], int zn=0);
 
-inline void itoa_cat(int n, char s[]) { itoa(n, s+strlen(s)); }
-inline void ltoa_cat(int n, char s[]) { ltoa(n, s+strlen(s)); }
+inline void itoa_cat(int n, char s[], int zn=0) { _itoa(n, s+strlen(s), zn); }
+inline void ltoa_cat(int n, char s[], int zn=0) { _ltoa(n, s+strlen(s), zn); }
