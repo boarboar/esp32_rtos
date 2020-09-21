@@ -58,7 +58,7 @@ static void vWiFiTask(void *pvParameters) {
       continue;
     } else {
       xLogger.vAddLogMsg("Connected to ", CRED_WIFI_SSID);
-      xLogger.vAddLogMsg("With IP ", WiFi.localIP());
+      //xLogger.vAddLogMsg("With IP ", WiFi.localIP());
     }
 
 
@@ -94,7 +94,8 @@ static void vMotionTask(void *pvParameters) {
 static void vI2C_Task(void *pvParameters) {
     int16_t mpu_res=0; 
     int16_t cnt = 0;   
-    xLogger.vAddLogMsg("I2C Task started.");
+    xLogger.vAddLogMsg("I2C task started on core# ", xPortGetCoreID());    
+
     for (;;) { 
       cnt++;
       vTaskDelay(2); 
