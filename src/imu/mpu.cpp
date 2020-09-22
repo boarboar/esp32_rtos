@@ -16,7 +16,7 @@
 extern ComLogger xLogger;
 //extern CommManager xCommMgr;
 
-//MpuDrv MpuDrv::Mpu; // singleton
+MpuDrv MpuDrv::Mpu; // singleton
 
 MpuDrv::MpuDrv() : dmpStatus(ST_0) {
   //vSemaphoreCreateBinary(xIMUFree); // can not do this in constructor!!!    

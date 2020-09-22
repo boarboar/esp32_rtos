@@ -22,14 +22,14 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 ComLogger xLogger;
-MpuDrv xIMU;
+//MpuDrv xIMU;
 xTaskHandle MPUHandle = NULL;
 SemaphoreHandle_t xDisplayMutex = NULL;
 boolean fMPUReady=false;
 //int yaw=0;
 
 float yaw=0;
-
+char szIP[16]="";
 const int led1 = 2; // Pin of the LED
 
 void displayUpdate() {
@@ -39,11 +39,13 @@ void displayUpdate() {
     strcpy(buf, "Yaw: ");
     if(fMPUReady) {
       itoa_cat((int)yaw, buf);
-      xLogger.vAddLogMsg("Yaw ", (int)yaw);
+      //xLogger.vAddLogMsg("Yaw ", (int)yaw);
     }
     display.print(buf);
     display.setCursor(0,16);
-    display.print("IP:");
+    strcpy(buf, "IP: ");
+    strncat(buf, szIP, 32);
+    display.print(buf);
 }
 
 static void vSerialOutTask(void *pvParameters) {
@@ -59,6 +61,7 @@ static void vWiFiTask(void *pvParameters) {
   xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
 
   for (;;) {   
+    szIP[0] = 0;
     WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
     xLogger.vAddLogMsg("Connecting to ", CRED_WIFI_SSID);
 
@@ -74,7 +77,8 @@ static void vWiFiTask(void *pvParameters) {
       continue;
     } else {
       xLogger.vAddLogMsg("Connected to ", CRED_WIFI_SSID);
-      xLogger.vAddLogMsg("With IP ", WiFi.localIP().toString().c_str());
+      strcpy(szIP, WiFi.localIP().toString().c_str());
+      xLogger.vAddLogMsg("With IP ", szIP);
     }
 
     for (;;) {
@@ -96,10 +100,10 @@ static void vMotionTask(void *pvParameters) {
       vTaskDelay(200); 
       //float yaw=0;
 
-      if(xIMU.Acquire()) {
-        xIMU.process();           
-        yaw=xIMU.getYaw()*180.0 / PI;
-        xIMU.Release();
+      if(MpuDrv::Mpu.Acquire()) {
+        MpuDrv::Mpu.process();           
+        yaw=MpuDrv::Mpu.getYaw()*180.0 / PI;
+        MpuDrv::Mpu.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
 
@@ -114,9 +118,9 @@ static void vI2C_Task(void *pvParameters) {
     for (;;) { 
       cnt++;
       vTaskDelay(2); 
-      if(xIMU.Acquire()) {
-        mpu_res = xIMU.cycle_dt();       
-        xIMU.Release();
+      if(MpuDrv::Mpu.Acquire()) {
+        mpu_res = MpuDrv::Mpu.cycle_dt();       
+        MpuDrv::Mpu.Release();
       } else continue;
       if(mpu_res==2) {
         // IMU settled
@@ -126,7 +130,7 @@ static void vI2C_Task(void *pvParameters) {
         //break;
       }
       if(cnt>400) {
-        // evry 400 ms refresh display
+        // every 400 ms refresh display
         if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait
        
           unsigned long t0 = xTaskGetTickCount();
@@ -210,8 +214,8 @@ void setup() {
   Serial.println();
 
   xLogger.Init();
-  //MpuDrv::Mpu.init();
-  xIMU.init();
+  MpuDrv::Mpu.init();
+  //xIMU.init();
 
   xDisplayMutex = xSemaphoreCreateMutex();
 

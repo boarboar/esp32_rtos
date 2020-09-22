@@ -23,9 +23,9 @@ class MpuDrv {
   enum FailReason {MPU_FAIL_NONE=0, MPU_FAIL_INIT=1,  MPU_FAIL_CONVTMO=2, MPU_FAIL_CYCLE=3, MPU_EVENT_CONV_PROG=16, MPU_FAIL_INIT_OK=128};
   enum FailCountIdx { MPU_FAIL_NODATA_IDX=0, MPU_FAIL_FIFOOVFL_IDX=1, MPU_FAIL_FIFOTMO_IDX=2, MPU_FAIL_FIFOEXCESS_IDX=3 };
 public:
-  //static MpuDrv Mpu; // singleton  
+  static MpuDrv Mpu; // singleton  
   //int16_t init(/*uint16_t sda, uint16_t sdl,*/ uint16_t intr);
-  MpuDrv();
+  //MpuDrv();
   int16_t init();
 
   bool Acquire();
@@ -43,7 +43,7 @@ public:
   void flushAlarms();
   float getYaw();
 protected:  
-  //MpuDrv();
+  MpuDrv();
   // MPU control/status vars
   MPU6050 mpu;
   //uint32_t start;
