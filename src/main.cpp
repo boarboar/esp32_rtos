@@ -22,13 +22,29 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 ComLogger xLogger;
-xTaskHandle MPUHandle;
+MpuDrv xIMU;
+xTaskHandle MPUHandle = NULL;
+SemaphoreHandle_t xDisplayMutex = NULL;
 boolean fMPUReady=false;
 //int yaw=0;
 
 float yaw=0;
 
 const int led1 = 2; // Pin of the LED
+
+void displayUpdate() {
+    char buf[32];
+    display.clearDisplay(); 
+    display.setCursor(0,0);
+    strcpy(buf, "Yaw: ");
+    if(fMPUReady) {
+      itoa_cat((int)yaw, buf);
+      xLogger.vAddLogMsg("Yaw ", (int)yaw);
+    }
+    display.print(buf);
+    display.setCursor(0,16);
+    display.print("IP:");
+}
 
 static void vSerialOutTask(void *pvParameters) {
     Serial.print("Serial Out Task started on core# ");
@@ -58,9 +74,8 @@ static void vWiFiTask(void *pvParameters) {
       continue;
     } else {
       xLogger.vAddLogMsg("Connected to ", CRED_WIFI_SSID);
-      //xLogger.vAddLogMsg("With IP ", WiFi.localIP());
+      xLogger.vAddLogMsg("With IP ", WiFi.localIP().toString().c_str());
     }
-
 
     for (;;) {
       vTaskDelay(200);
@@ -81,10 +96,10 @@ static void vMotionTask(void *pvParameters) {
       vTaskDelay(200); 
       //float yaw=0;
 
-      if(MpuDrv::Mpu.Acquire()) {
-        MpuDrv::Mpu.process();           
-        yaw=MpuDrv::Mpu.getYaw()*180.0 / PI;
-        MpuDrv::Mpu.Release();
+      if(xIMU.Acquire()) {
+        xIMU.process();           
+        yaw=xIMU.getYaw()*180.0 / PI;
+        xIMU.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
 
@@ -99,9 +114,9 @@ static void vI2C_Task(void *pvParameters) {
     for (;;) { 
       cnt++;
       vTaskDelay(2); 
-      if(MpuDrv::Mpu.Acquire()) {
-        mpu_res = MpuDrv::Mpu.cycle_dt();       
-        MpuDrv::Mpu.Release();
+      if(xIMU.Acquire()) {
+        mpu_res = xIMU.cycle_dt();       
+        xIMU.Release();
       } else continue;
       if(mpu_res==2) {
         // IMU settled
@@ -110,23 +125,17 @@ static void vI2C_Task(void *pvParameters) {
         xTaskCreate(vMotionTask, "TaskMotion", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
         //break;
       }
-      if(cnt>500) {
-        // evry 1000 ms refresh display
-        unsigned long t0 = xTaskGetTickCount();
-        char buf[32];
-        strcpy(buf, "Yaw: ");
-        if(fMPUReady) {
-          itoa_cat((int)yaw, buf);
-          xLogger.vAddLogMsg("Yaw ", (int)yaw);
+      if(cnt>400) {
+        // evry 400 ms refresh display
+        if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait
+       
+          unsigned long t0 = xTaskGetTickCount();
+          //displayUpdate();
+          display.display();
+          xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
+          cnt=0;
+          xSemaphoreGive( xDisplayMutex );
         }
-
-        display.clearDisplay(); 
-        display.setCursor(0,0);
-        display.print(buf);
-
-        display.display();
-        xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
-        cnt=0;
       }
     }
 }
@@ -146,17 +155,13 @@ void hello_task(void *pvParameter)
 
 void disp_task(void *pvParameter)
 {
-  char buf[32];
   for(;;){ // infinite loop
       // Pause the task again for 2000 ms
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-      strcpy(buf, "Yaw: ");
-      if(fMPUReady)
-        itoa_cat((int)yaw, buf);
-
-      display.clearDisplay(); 
-      display.setCursor(0,0);
-      display.print(buf);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 20 ) == pdTRUE ) {
+        displayUpdate();
+        xSemaphoreGive( xDisplayMutex );
+      }
     }
 }
 
@@ -182,9 +187,8 @@ void setup() {
 
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0,0);
+  //display.setCursor(0,0);
   //display.print("Starting...");
-
   //display.drawPixel(10, 10, WHITE);
 
   display.display();
@@ -205,26 +209,11 @@ void setup() {
     }
   Serial.println();
 
-  // WiFi.begin(CRED_WIFI_SSID, CRED_WIFI_PASS);
-
-  // Serial.print("Connecting to  ...");
-
-  // while (WiFi.status() != WL_CONNECTED && i++ < 40) { 
-  //   Serial.print(".");
-  //   delay(200); 
-  //   }
-
-  // Serial.println();
-  // if(WiFi.status() != WL_CONNECTED) {
-  //   Serial.println("Failed to connect");
-  // } else {
-  //   Serial.println("Connected");
-  // }
-
   xLogger.Init();
-  MpuDrv::Mpu.init();
+  //MpuDrv::Mpu.init();
+  xIMU.init();
 
-  
+  xDisplayMutex = xSemaphoreCreateMutex();
 
   xTaskCreatePinnedToCore(vSerialOutTask,
                 "TaskSO",
@@ -250,7 +239,7 @@ void setup() {
 
 
   //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
-  //xTaskCreate(&disp_task, "disp_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
+  xTaskCreate(&disp_task, "disp_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 }
 
