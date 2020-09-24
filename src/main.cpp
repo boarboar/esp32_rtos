@@ -92,10 +92,8 @@ static void vWiFiTask(void *pvParameters) {
         break;
       }
     }
-
   }
 }
-
 
 static void vMotionTask(void *pvParameters) {
     //int16_t val[16];
@@ -110,7 +108,6 @@ static void vMotionTask(void *pvParameters) {
         xIMU.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
-
     }
 }
 
@@ -134,20 +131,17 @@ static void vI2C_Task(void *pvParameters) {
         //break;
       }
       if(cnt>400) {
-        // every 400 ms refresh display
-        if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait
-       
+        // every 200 ms refresh display
+        if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait      
           unsigned long t0 = xTaskGetTickCount();
-          //displayUpdate();
           display.display();
-          xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
+          //xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
           cnt=0;
           xSemaphoreGive( xDisplayMutex );
         }
       }
     }
 }
-
 
 void hello_task(void *pvParameter)
 {
@@ -225,26 +219,24 @@ void setup() {
 
   xTaskCreatePinnedToCore(vSerialOutTask,
                 "TaskSO",
-                2048,
+                1024,
                 NULL,
                 tskIDLE_PRIORITY + 1, // low
                 NULL, 0); 
 
   xTaskCreatePinnedToCore(vWiFiTask,
                 "TaskWiFi",
-                8192,
+                4096,
                 NULL,
                 tskIDLE_PRIORITY + 2, // med
                 NULL, 0); 
 
   xTaskCreatePinnedToCore(vI2C_Task,
                 "TaskIMU",
-                8192,
+                4096,
                 NULL,
                 tskIDLE_PRIORITY + 3, // max
                 &MPUHandle, 1);
-
-
 
   //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
   xTaskCreate(&disp_task, "disp_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
