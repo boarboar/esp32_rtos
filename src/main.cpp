@@ -19,10 +19,14 @@
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+
+#define xIMU MpuDrv::Mpu 
+//MpuDrv xIMU;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 ComLogger xLogger;
-//MpuDrv xIMU;
+
 xTaskHandle MPUHandle = NULL;
 SemaphoreHandle_t xDisplayMutex = NULL;
 boolean fMPUReady=false;
@@ -100,10 +104,10 @@ static void vMotionTask(void *pvParameters) {
       vTaskDelay(200); 
       //float yaw=0;
 
-      if(MpuDrv::Mpu.Acquire()) {
-        MpuDrv::Mpu.process();           
-        yaw=MpuDrv::Mpu.getYaw()*180.0 / PI;
-        MpuDrv::Mpu.Release();
+      if(xIMU.Acquire()) {
+        xIMU.process();           
+        yaw=xIMU.getYaw()*180.0 / PI;
+        xIMU.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
 
@@ -118,9 +122,9 @@ static void vI2C_Task(void *pvParameters) {
     for (;;) { 
       cnt++;
       vTaskDelay(2); 
-      if(MpuDrv::Mpu.Acquire()) {
-        mpu_res = MpuDrv::Mpu.cycle_dt();       
-        MpuDrv::Mpu.Release();
+      if(xIMU.Acquire()) {
+        mpu_res = xIMU.cycle_dt();       
+        xIMU.Release();
       } else continue;
       if(mpu_res==2) {
         // IMU settled
@@ -214,7 +218,7 @@ void setup() {
   Serial.println();
 
   xLogger.Init();
-  MpuDrv::Mpu.init();
+  xIMU.init();
   //xIMU.init();
 
   xDisplayMutex = xSemaphoreCreateMutex();

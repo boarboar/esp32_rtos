@@ -85,27 +85,6 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int16_t i1, const char *pucMsg2,
     }
 }
 
-/*
-void ComLogger::vAddLogMsg(const char *pucMsg1, int16_t i1, int16_t i2, int16_t i3) {
-   if ( xSemaphoreTake( xLogFree, ( portTickType ) 10 ) == pdTRUE )
-    {
-      txMessage.ucMessageID++;     
-      if(pucMsg1) 
-        strncpy(txMessage.ucData, pucMsg1, CLOG_MSG_SZ);          
-      else *txMessage.ucData=0;  
-      strncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
-      itoa_cat(i1, txMessage.ucData);
-      strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
-      itoa_cat(i2, txMessage.ucData);
-      strncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
-      itoa_cat(i3, txMessage.ucData);
-      txMessage.xTick = xTaskGetTickCount();
-      xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
-      xSemaphoreGive( xLogFree );
-    }
-}
-*/
-
 void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t i3) {
    if ( xSemaphoreTake( xLogFree, ( portTickType ) 10 ) == pdTRUE )
     {
@@ -145,6 +124,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
       xSemaphoreGive( xLogFree );
     }
 }
+
 void ComLogger::Process() {  
   const long mss = 1000;
   const long msm = 60*mss;
@@ -161,10 +141,6 @@ void ComLogger::Process() {
     //Serial.print(" : ");
     // dd hh:mm:ss:ttt
     long t = (long)rxMessage.xTick*portTICK_PERIOD_MS;
-    
-    //sprintf(buf, "%d ")
-    //Serial.print(t);
-    //Serial.print(" : ");
 
     _ltoa((t%msd)/msh, prtbuf, 2); //hrs
     strncat(prtbuf, ":", CLOG_PB_SZ);          
@@ -177,8 +153,10 @@ void ComLogger::Process() {
     Serial.print(prtbuf);
     Serial.println(rxMessage.ucData);
     ucLastProcMsgID = rxMessage.ucMessageID;
-    vTaskDelay(100);         
-   }        
+    //vTaskDelay(100);
+    vTaskDelay(20);         
+   }   
+
 }
 
 
