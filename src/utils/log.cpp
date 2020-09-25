@@ -14,8 +14,8 @@ void ComLogger::Init() {
     }
 
     txMessage.ucMessageID=0;
-    txMessage.ucData[0]=0;
-    ucLastProcMsgID = (char)-1;
+    txMessage.ucData[0] = 0;
+    ucLastProcMsgID = 0;
     
     Serial.println("Logger OK");
 }

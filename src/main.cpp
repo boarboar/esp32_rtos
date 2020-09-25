@@ -30,19 +30,25 @@ ComLogger xLogger;
 xTaskHandle MPUHandle = NULL;
 SemaphoreHandle_t xDisplayMutex = NULL;
 boolean fMPUReady=false;
-//int yaw=0;
+boolean fDisplayUpdated=false;
 
-float yaw=0;
+//float yaw=0;
+float ypr[3]={0, 0, 0};
+
 char szIP[16]="";
 const int led1 = 2; // Pin of the LED
 
 void displayUpdate() {
-    char buf[32];
+    char buf[64];
     display.clearDisplay(); 
     display.setCursor(0,0);
-    strcpy(buf, "Yaw: ");
+    strcpy(buf, "YPR: ");
     if(fMPUReady) {
-      itoa_cat((int)yaw, buf);
+      //itoa_cat((int)yaw, buf);
+      for(int i=0; i<3; i++) {
+        itoa_cat((int)(ypr[0]*180.0 / PI), buf);
+        strcat(buf, " ");
+      }
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
     }
     display.print(buf);
@@ -50,6 +56,7 @@ void displayUpdate() {
     strcpy(buf, "IP: ");
     strncat(buf, szIP, 32);
     display.print(buf);
+    fDisplayUpdated = true;
 }
 
 static void vSerialOutTask(void *pvParameters) {
@@ -104,7 +111,8 @@ static void vMotionTask(void *pvParameters) {
 
       if(xIMU.Acquire()) {
         xIMU.process();           
-        yaw=xIMU.getYaw()*180.0 / PI;
+        //yaw=xIMU.getYaw()*180.0 / PI;
+        xIMU.getAll(ypr, NULL, NULL);
         xIMU.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
@@ -130,12 +138,15 @@ static void vI2C_Task(void *pvParameters) {
         xTaskCreate(vMotionTask, "TaskMotion", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
         //break;
       }
-      if(cnt>400) {
+      if(cnt>100) {
         // every 200 ms refresh display
-        if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait      
-          unsigned long t0 = xTaskGetTickCount();
-          display.display();
-          //xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
+        if( xSemaphoreTake( xDisplayMutex, ( TickType_t ) 0 ) == pdTRUE ) { // do not wait   
+          if(fDisplayUpdated) {   
+            //unsigned long t0 = xTaskGetTickCount();
+            display.display();
+            fDisplayUpdated = false;
+            //xLogger.vAddLogMsg("Disp updated in (ms) ",  xTaskGetTickCount() - t0);
+          }
           cnt=0;
           xSemaphoreGive( xDisplayMutex );
         }
@@ -145,13 +156,14 @@ static void vI2C_Task(void *pvParameters) {
 
 void hello_task(void *pvParameter)
 {
+  xLogger.vAddLogMsg("Task HELLO is running on ", xPortGetCoreID());
   for(;;){ // infinite loop
 
       digitalWrite(led1, HIGH);
       vTaskDelay(500 / portTICK_PERIOD_MS);
       digitalWrite(led1, LOW);
       vTaskDelay(500 / portTICK_PERIOD_MS);
-      xLogger.vAddLogMsg("Task HELLO is running on ", xPortGetCoreID());
+      
     }
 }
 

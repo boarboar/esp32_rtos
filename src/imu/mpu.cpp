@@ -190,10 +190,8 @@ int16_t MpuDrv::cycle(uint16_t /*dt*/) {
     // TODO// xCommMgr.vAddAlarm(CommManager::CM_INFO, CommManager::CM_MODULE_IMU, MPU_EVENT_CONV_PROG, qe, ae);       
     if(qe<QUAT_INIT_TOL && ae<ACC_INIT_TOL) {
       conv_count++;
-      //if((millis()-start)/1000 > INIT_PERIOD_MIN && conv_count>3) settled=true;             
       if((xTaskGetTickCount()-xStart)/1000L > INIT_PERIOD_MIN && conv_count>3) settled=true;             
     } else conv_count=0;  
-    //if((millis()-start)/1000 > INIT_PERIOD_MAX) {
     if((xTaskGetTickCount()-xStart)/1000L > INIT_PERIOD_MAX) {
       xLogger.vAddLogMsg("MPU Failed to converge");
       // TODO// xCommMgr.vAddAlarm(CommManager::CM_EVENT, CommManager::CM_MODULE_IMU, MPU_FAIL_CONVTMO, -1); 
@@ -297,9 +295,15 @@ void MpuDrv::flushAlarms() {
   
 float MpuDrv::getYaw() { return ypr[0]; }
 
-void MpuDrv::getAll(float* ypr, float* af, float* vf) {        
-  ypr[0]=this->ypr[0]; ypr[1]=this->ypr[1]; ypr[2]=this->ypr[2];
-  af[0]=a.x; af[1]=a.y; af[2]=a.z;
-  vf[0]=v.x; vf[1]=v.y; vf[2]=v.z;
+void MpuDrv::getAll(float* ypr, float* af, float* vf) {     
+  if(ypr) {   
+    ypr[0]=this->ypr[0]; ypr[1]=this->ypr[1]; ypr[2]=this->ypr[2];
+  }
+  if(af) {
+    af[0]=a.x; af[1]=a.y; af[2]=a.z;
+  }
+  if(vf) {
+    vf[0]=v.x; vf[1]=v.y; vf[2]=v.z;
+  }
 }  
 
