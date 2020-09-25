@@ -46,7 +46,7 @@ void displayUpdate() {
     if(fMPUReady) {
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
-        itoa_cat((int)(ypr[0]*180.0 / PI), buf);
+        itoa_cat((int)(ypr[i]*180.0 / PI), buf);
         strcat(buf, " ");
       }
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
