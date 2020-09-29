@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <FS.h>
+#include <SPIFFS.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "utils/log.h"
@@ -37,6 +39,23 @@ float ypr[3]={0, 0, 0};
 
 char szIP[16]="";
 const int led1 = 2; // Pin of the LED
+
+void readFS() {
+    if(!SPIFFS.begin()){
+        Serial.println("SPIFFS Mount Failed");
+        return;
+    }
+    Serial.println("FS mounted");
+
+    File f = SPIFFS.open("test.dat", "r");
+    if (!f) {
+      Serial.println(F("Failed to open config file"));
+      return;
+    }
+    size_t size = f.size();
+    f.close();
+    Serial.print(F("Cfg sz ")); Serial.println(size);
+}
 
 void displayUpdate() {
     char buf[64];
@@ -184,6 +203,8 @@ void setup() {
   Serial.begin(115200);
   Wire.begin();
   //Wire1.begin(18 , 19);
+
+  readFS();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
