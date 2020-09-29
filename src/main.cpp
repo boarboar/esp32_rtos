@@ -41,13 +41,13 @@ char szIP[16]="";
 const int led1 = 2; // Pin of the LED
 
 void readFS() {
-    if(!SPIFFS.begin()){
+    if(!SPIFFS.begin(true)){
         Serial.println("SPIFFS Mount Failed");
         return;
     }
     Serial.println("FS mounted");
 
-    File f = SPIFFS.open("test.dat", "r");
+    File f = SPIFFS.open("/test.dat", "r");
     if (!f) {
       Serial.println(F("Failed to open config file"));
       return;
