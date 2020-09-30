@@ -41,29 +41,6 @@ THE SOFTWARE.
 
 #include "MPU6050.h"
 
-// // Tom Carpenter's conditional PROGMEM code
-// // http://forum.arduino.cc/index.php?topic=129407.0
-// #ifdef __AVR__
-//     #include <avr/pgmspace.h>
-// #else
-//     // Teensy 3.0 library conditional PROGMEM code from Paul Stoffregen
-//     #ifndef __PGMSPACE_H_
-//         #define __PGMSPACE_H_ 1
-//         #include <inttypes.h>
-
-//         #define PROGMEM
-//         #define PGM_P  const char *        
-//         #define pgm_read_byte_near(addr) pgm_read_byte(addr)
-//         #define pgm_read_word_near(addr) pgm_read_word(addr)
-//         #define pgm_read_dword_near(addr) pgm_read_dword(addr)
-//         #define pgm_read_float_near(addr) pgm_read_float(addr)
-//         #define pgm_read_byte_far(addr) pgm_read_byte(addr)
-//         #define pgm_read_word_far(addr) pgm_read_word(addr)
-//         #define pgm_read_dword_far(addr) pgm_read_dword(addr)
-//         #define pgm_read_float_far(addr) pgm_read_float(addr)
-//     #endif
-// #endif
-
 /* Source is from the InvenSense MotionApps v2 demo code. Original source is
  * unavailable, unless you happen to be amazing as decompiling binary by
  * hand (in which case, please contact me, and I'm totally serious).
