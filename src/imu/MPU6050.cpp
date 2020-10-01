@@ -3052,7 +3052,17 @@ void MPU6050::readMemoryBlock(uint8_t *data, uint16_t dataSize, uint8_t bank, ui
         }
     }
 }
+
+bool MPU6050::writeProgMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t bank, uint8_t address, bool verify) {
+    //return writeMemoryBlock(data, dataSize, bank, address, verify, true);
+    return writeMemoryBlock(data, dataSize, bank, address, false, false);
+}
+
 bool MPU6050::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t bank, uint8_t address, bool verify, bool useProgMem) {
+
+    assert(!verify);
+    assert(!useProgMem);
+    
     setMemoryBank(bank);
     setMemoryStartAddress(address);
     uint8_t chunkSize;
@@ -3112,11 +3122,10 @@ bool MPU6050::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t b
     return true;
 }
 
-bool MPU6050::writeProgMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t bank, uint8_t address, bool verify) {
-    return writeMemoryBlock(data, dataSize, bank, address, verify, true);
-}
-
 bool MPU6050::writeDMPConfigurationSet(const uint8_t *data, uint16_t dataSize, bool useProgMem) {
+
+    assert(!useProgMem);
+
     uint8_t *progBuffer = 0;
 	uint8_t success, special;
     uint16_t i, j;
@@ -3151,7 +3160,8 @@ bool MPU6050::writeDMPConfigurationSet(const uint8_t *data, uint16_t dataSize, b
             } else {
                 progBuffer = (uint8_t *)data + i;
             }
-            success = writeMemoryBlock(progBuffer, length, bank, offset, true);
+            //success = writeMemoryBlock(progBuffer, length, bank, offset, true);
+            success = writeMemoryBlock(progBuffer, length, bank, offset, false);
             i += length;
         } else {
             // special instruction
@@ -3189,7 +3199,8 @@ bool MPU6050::writeDMPConfigurationSet(const uint8_t *data, uint16_t dataSize, b
     return true;
 }
 bool MPU6050::writeProgDMPConfigurationSet(const uint8_t *data, uint16_t dataSize) {
-    return writeDMPConfigurationSet(data, dataSize, true);
+    //return writeDMPConfigurationSet(data, dataSize, true);
+    return writeDMPConfigurationSet(data, dataSize, false);
 }
 
 // DMP_CFG_1 register

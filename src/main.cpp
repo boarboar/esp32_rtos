@@ -5,6 +5,7 @@
 #include <SPIFFS.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
 #include "utils/log.h"
 #include "imu/mpu.h"
 #include "cred.inc"
@@ -53,8 +54,26 @@ void readFS() {
       return;
     }
     size_t size = f.size();
-    f.close();
+
+    // Serial.println("- read from file:");
+    // while(f.available()){
+    //     Serial.write(f.read());
+    // }
+
     Serial.print(F("Cfg sz ")); Serial.println(size);
+
+    StaticJsonDocument<100> doc;
+    DeserializationError error = deserializeJson(doc, f);
+
+    f.close();
+
+    if (error) {
+      Serial.println(F("Error: deserializeJson"));
+      Serial.println(error.c_str());
+    }
+    Serial.print(F("serializeJson = "));
+    serializeJson(doc, Serial);
+
 }
 
 void displayUpdate() {
