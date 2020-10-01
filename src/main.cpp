@@ -16,6 +16,8 @@
 //  SDA	SDA (default is GPIO 21)
 //  SCL	SCL (default is GPIO 22) 
 //  https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+//  data file upload:
+//  pio run -t uploadfs
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -73,7 +75,7 @@ void readFS() {
     }
     Serial.print(F("serializeJson = "));
     serializeJson(doc, Serial);
-
+    Serial.println("");
 }
 
 void displayUpdate() {
