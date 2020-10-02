@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include "utils/log.h"
 #include "imu/mpu.h"
+#include "cmd/cmd.h"
 #include "cred.inc"
 
 //  Hold-down the “BOOT” button in your ESP32 board
@@ -19,18 +20,25 @@
 //  data file upload:
 //  pio run -t uploadfs
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+const int udp_port = 4444;
+const int led1 = 2; // Pin of the LED
+
+const int SCREEN_WIDTH = 128; // OLED display width, in pixels
+const int SCREEN_HEIGHT = 64; // OLED display height, in pixels
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-
-#define xIMU MpuDrv::Mpu 
-//MpuDrv xIMU;
+const int OLED_RESET     = -1; // Reset pin # (or -1 if sharing Arduino reset pin)
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+#define xIMU MpuDrv::Mpu 
+//MpuDrv xIMU;
+//MpuDrv& xIMU = MpuDrv::Mpu;
+
+
 ComLogger xLogger;
+CmdProc& cmd = CmdProc::Cmd;
+
 
 xTaskHandle MPUHandle = NULL;
 SemaphoreHandle_t xDisplayMutex = NULL;
@@ -39,9 +47,7 @@ boolean fDisplayUpdated=false;
 
 //float yaw=0;
 float ypr[3]={0, 0, 0};
-
 char szIP[16]="";
-const int led1 = 2; // Pin of the LED
 
 void readFS() {
     if(!SPIFFS.begin(true)){
@@ -132,11 +138,25 @@ static void vWiFiTask(void *pvParameters) {
       xLogger.vAddLogMsg("With IP ", szIP);
     }
 
+    if(cmd.init(udp_port)) {
+        xLogger.vAddLogMsg("UDP listening on ", udp_port);
+      } else {
+        xLogger.vAddLogMsg("Failed to init UDP socket!");
+        delay(1000);
+        //ESP.reset();
+      } 
+
     for (;;) {
-      vTaskDelay(200);
+      vTaskDelay(10);
       if(WiFi.status() != WL_CONNECTED) {
         xLogger.vAddLogMsg("Connection lost with status ", WiFi.status());
         break;
+      }
+      if(cmd.connected()) {
+        if (cmd.read()) {
+          cmd.doCmd();       
+          cmd.respond();      
+        }
       }
     }
   }
@@ -194,7 +214,7 @@ static void vI2C_Task(void *pvParameters) {
     }
 }
 
-void hello_task(void *pvParameter)
+void LED_task(void *pvParameter)
 {
   xLogger.vAddLogMsg("Task HELLO is running on ", xPortGetCoreID());
   for(;;){ // infinite loop
@@ -225,33 +245,27 @@ void setup() {
   Wire.begin();
   //Wire1.begin(18 , 19);
 
-  readFS();
+  Serial.print("Tick = ");
+  Serial.println(portTICK_PERIOD_MS);
+
+  readFS(); // test
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+    //for(;;); // Don't proceed, loop forever
   }
 
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
   display.display();
-  delay(2000); // Pause for 2 seconds
+  delay(500); 
 
   // Clear the buffer
   display.clearDisplay();
-
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  //display.setCursor(0,0);
-  //display.print("Starting...");
-  //display.drawPixel(10, 10, WHITE);
-
   display.display();
-
-
-  Serial.print("Tick = ");
-  Serial.println(portTICK_PERIOD_MS);
 
   byte mac[6]; 
   uint8_t i = 0;
@@ -267,7 +281,6 @@ void setup() {
 
   xLogger.Init();
   xIMU.init();
-  //xIMU.init();
 
   xDisplayMutex = xSemaphoreCreateMutex();
 
@@ -292,7 +305,7 @@ void setup() {
                 tskIDLE_PRIORITY + 3, // max
                 &MPUHandle, 1);
 
-  //xTaskCreate(&hello_task, "hello_task", 2048, NULL, tskIDLE_PRIORITY, NULL);
+  xTaskCreate(&LED_task, "LED_task", 1048, NULL, tskIDLE_PRIORITY, NULL);
   xTaskCreate(&disp_task, "disp_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 }
