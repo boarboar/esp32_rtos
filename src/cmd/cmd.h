@@ -26,6 +26,7 @@ protected:
   CmdProc() : isConnected(false) {;}
   void _sendToSysLog(JsonObject& rootOut);
   char packetBuffer[BUF_SZ];
+  char prtBuffer[BUF_SZ];
   bool isConnected;
   WiFiUDP udp_rcv;
   WiFiUDP udp_snd;

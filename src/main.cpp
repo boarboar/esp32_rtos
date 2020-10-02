@@ -31,9 +31,9 @@ const int OLED_RESET     = -1; // Reset pin # (or -1 if sharing Arduino reset pi
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-#define xIMU MpuDrv::Mpu 
+//#define xIMU MpuDrv::Mpu 
 //MpuDrv xIMU;
-//MpuDrv& xIMU = MpuDrv::Mpu;
+MpuDrv& xIMU = MpuDrv::Mpu;
 
 
 ComLogger xLogger;
@@ -147,14 +147,16 @@ static void vWiFiTask(void *pvParameters) {
       } 
 
     for (;;) {
-      vTaskDelay(10);
+      vTaskDelay(1);
       if(WiFi.status() != WL_CONNECTED) {
         xLogger.vAddLogMsg("Connection lost with status ", WiFi.status());
         break;
       }
-      if(cmd.connected()) {
+      //if(cmd.connected()) 
+      {
         if (cmd.read()) {
-          cmd.doCmd();       
+          cmd.doCmd();      
+          //yield(); 
           cmd.respond();      
         }
       }
@@ -293,9 +295,9 @@ void setup() {
 
   xTaskCreatePinnedToCore(vWiFiTask,
                 "TaskWiFi",
-                4096,
+                8192,
                 NULL,
-                tskIDLE_PRIORITY + 2, // med
+                tskIDLE_PRIORITY + 3, // med
                 NULL, 0); 
 
   xTaskCreatePinnedToCore(vI2C_Task,

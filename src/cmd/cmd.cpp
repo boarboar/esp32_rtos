@@ -60,6 +60,7 @@ boolean CmdProc::read() {
     int len = udp_rcv.read(packetBuffer, BUF_SZ);
     if(len>BUF_SZ-1) len=BUF_SZ-1;
     packetBuffer[len] = 0;    
+    xLogger.vAddLogMsg("UDP: ", packetBuffer);
       /*
       Serial.print("From: "); Serial.print(udp_rcv.remoteIP()); Serial.print(":"); Serial.print(udp_rcv.remotePort());
       Serial.print(" len: "); Serial.print(len);Serial.print(" Val: "); Serial.println(packetBuffer);
@@ -83,8 +84,9 @@ int16_t CmdProc::doCmd() {
     docOut["I"] = -1;
     docOut["R"] = -1;
   } else {
-    serializeJson(docIn, packetBuffer, BUF_SZ-1);
-    xLogger.vAddLogMsg("JS In: ", packetBuffer);
+    serializeJson(docIn, prtBuffer, BUF_SZ-1);
+    xLogger.vAddLogMsg("JS In: ", prtBuffer);
+    //serializeJson(docIn, Serial);
     _doCmd(docIn, docOut);
   }
 
