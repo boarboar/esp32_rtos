@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include "../utils/log.h"
 
+// AsyncUDP
+
 // #include "stat.h"
 // #include "cfg.h"
 // #include "controller.h"
@@ -56,7 +58,10 @@ boolean CmdProc::connected() { return isConnected; }
 
 boolean CmdProc::read() {
   int packetSize = udp_rcv.parsePacket(); 
+  
   if (packetSize) {
+
+    xLogger.vAddLogMsg("UDP PSZ: ", packetSize);
     int len = udp_rcv.read(packetBuffer, BUF_SZ);
     if(len>BUF_SZ-1) len=BUF_SZ-1;
     packetBuffer[len] = 0;    

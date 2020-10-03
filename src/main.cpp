@@ -147,16 +147,16 @@ static void vWiFiTask(void *pvParameters) {
       } 
 
     for (;;) {
-      vTaskDelay(1);
+      vTaskDelay(20);
       if(WiFi.status() != WL_CONNECTED) {
         xLogger.vAddLogMsg("Connection lost with status ", WiFi.status());
         break;
       }
-      //if(cmd.connected()) 
+      if(cmd.connected()) 
       {
         if (cmd.read()) {
           cmd.doCmd();      
-          //yield(); 
+          yield(); 
           cmd.respond();      
         }
       }
@@ -250,6 +250,12 @@ void setup() {
   Serial.print("Tick = ");
   Serial.println(portTICK_PERIOD_MS);
 
+  if(btStop()) {
+    Serial.println(F("BT stopped"));
+  } else {
+    Serial.println(F("BT stop failed"));
+  }
+
   readFS(); // test
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -313,6 +319,7 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  // put your main code here, to run repeatedly:if(cmd.connected()) 
+
 }
 
