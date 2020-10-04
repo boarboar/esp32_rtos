@@ -303,7 +303,7 @@ void setup() {
                 "TaskWiFi",
                 8192,
                 NULL,
-                tskIDLE_PRIORITY + 3, // med
+                tskIDLE_PRIORITY + 2, // med
                 NULL, 0); 
 
   xTaskCreatePinnedToCore(vI2C_Task,

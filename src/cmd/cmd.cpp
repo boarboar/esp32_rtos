@@ -11,6 +11,8 @@
 
 #include "cmd.h"
 
+extern "C" int rom_phy_get_vdd33();
+
 extern ComLogger xLogger;
 
 CmdProc CmdProc::Cmd; // singleton
@@ -76,7 +78,7 @@ boolean CmdProc::read() {
 
 void CmdProc::respond() {
   udp_snd.beginPacket(udp_rcv.remoteIP(), udp_rcv.remotePort());
-  udp_snd.write((uint8_t *)packetBuffer, strlen(packetBuffer));
+  udp_snd.write((uint8_t *)prtBuffer, strlen(prtBuffer));
   udp_snd.endPacket();
 }
 
@@ -95,8 +97,8 @@ int16_t CmdProc::doCmd() {
     _doCmd(docIn, docOut);
   }
 
-  serializeJson(docOut, packetBuffer, BUF_SZ-1);
-  xLogger.vAddLogMsg("JS Out: ", packetBuffer);
+  serializeJson(docOut, prtBuffer, BUF_SZ-1);
+  xLogger.vAddLogMsg("JS Out: ", prtBuffer);
   
   return !error;
 }
@@ -174,6 +176,7 @@ int16_t _doCmd(StaticJsonDocument<256> & root, StaticJsonDocument<256> & rootOut
 }
 
 int16_t c_info(StaticJsonDocument<256>& /*root*/, StaticJsonDocument<256>& rootOut) {
+  float voltage = ((float)rom_phy_get_vdd33()) / 1000;
   //Serial.println("INFO"); 
   //rootOut["MST"]=MpuDrv::Mpu.getStatus();
   //rootOut["MDR"]=MpuDrv::Mpu.isDataReady();
@@ -181,7 +184,8 @@ int16_t c_info(StaticJsonDocument<256>& /*root*/, StaticJsonDocument<256>& rootO
   // rootOut["CST"]=Controller::ControllerProc.getStatus() ? 0 : 6; // tmp
   rootOut["FHS"]=ESP.getFreeHeap();
   rootOut["FSS"]=ESP.getFreeSketchSpace();
-  // rootOut["VCC"]=ESP.getVcc();  
+  rootOut["VCC"]=(int16_t)(voltage*100);  
+  rootOut["WP"]=(int16_t)(WiFi.RSSI());
   // rootOut["MDC"]=Stat::StatStore.cycle_mpu_dry_cnt;
   // rootOut["MOC"]=Stat::StatStore.mpu_owfl_cnt;
   // rootOut["MGC"]=Stat::StatStore.mpu_gup_cnt;

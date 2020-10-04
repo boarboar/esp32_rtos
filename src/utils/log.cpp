@@ -42,7 +42,7 @@ void ComLogger::vAddLogMsg(const char *pucMsg, const char *ps) {
       else *txMessage.ucData=0;  
       strncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
       if(ps != NULL)
-        strncat(txMessage.ucData, ps, CLOG_MSG_SZ);          
+        strncat(txMessage.ucData, ps, CLOG_MSG_SZ-strlen(txMessage.ucData)-1);          
       txMessage.xTick = xTaskGetTickCount();
       xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
       xSemaphoreGive( xLogFree );
