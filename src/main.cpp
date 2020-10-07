@@ -11,6 +11,8 @@
 #include "cmd/cmd.h"
 #include "cred.inc"
 
+#include <esp_task_wdt.h>
+
 //  Hold-down the “BOOT” button in your ESP32 board
 //  After you see the  “Connecting….” message in your Arduino IDE, release the finger from the “BOOT” button
 //
@@ -19,6 +21,9 @@
 //  https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 //  data file upload:
 //  pio run -t uploadfs
+
+//3 seconds WDT
+#define WDT_TIMEOUT 3
 
 const int udp_port = 4444;
 const int led1 = 2; // Pin of the LED
@@ -35,10 +40,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //MpuDrv xIMU;
 MpuDrv& xIMU = MpuDrv::Mpu;
 
-
 ComLogger xLogger;
 CmdProc& cmd = CmdProc::Cmd;
-
 
 xTaskHandle MPUHandle = NULL;
 SemaphoreHandle_t xDisplayMutex = NULL;
@@ -92,7 +95,7 @@ void displayUpdate() {
     if(fMPUReady) {
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
-        itoa_cat((int)(ypr[i]*180.0 / PI), buf);
+        s_itoa16_cat((int)(ypr[i]*180.0 / PI), buf, 64);
         strcat(buf, " ");
       }
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
@@ -184,14 +187,17 @@ static void vMotionTask(void *pvParameters) {
 static void vI2C_Task(void *pvParameters) {
     int16_t mpu_res=0; 
     int16_t cnt = 0;   
-    xLogger.vAddLogMsg("I2C task started on core# ", xPortGetCoreID());    
+    esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    xLogger.vAddLogMsg("I2C task started on core# ", xPortGetCoreID(), " WDT ", err); 
 
     for (;;) { 
+      
       cnt++;
       vTaskDelay(2); 
       if(xIMU.Acquire()) {
         mpu_res = xIMU.cycle_dt();       
         xIMU.Release();
+        esp_task_wdt_reset(); // reset WDT - need to check IMU err here - TODO
       } else continue;
       if(mpu_res==2) {
         // IMU settled
@@ -291,6 +297,8 @@ void setup() {
   xIMU.init();
 
   xDisplayMutex = xSemaphoreCreateMutex();
+
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
 
   xTaskCreatePinnedToCore(vSerialOutTask,
                 "TaskSO",

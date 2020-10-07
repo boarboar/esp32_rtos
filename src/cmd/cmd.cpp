@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 #include "../utils/log.h"
 
-// AsyncUDP
+#include "imu/mpu.h"
 
 // #include "stat.h"
 // #include "cfg.h"
@@ -11,9 +11,10 @@
 
 #include "cmd.h"
 
-extern "C" int rom_phy_get_vdd33();
+//extern "C" int rom_phy_get_vdd33();
 
 extern ComLogger xLogger;
+extern MpuDrv& xIMU;
 
 CmdProc CmdProc::Cmd; // singleton
 
@@ -21,7 +22,7 @@ typedef int16_t (*VFP)(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 
 int16_t _doCmd(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 int16_t c_info(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
-// int16_t c_reset(JsonObject&,JsonObject&);
+int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 // int16_t c_setsyslog(JsonObject&,JsonObject&);
 // int16_t c_getpos(JsonObject&,JsonObject&);
 // int16_t c_resetMPU(JsonObject&,JsonObject&);
@@ -33,7 +34,7 @@ int16_t c_info(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 
 //VFP cmd_imp[10]={c_info, c_reset, c_setsyslog, c_getpos, c_resetMPU, c_drive, c_steer, c_move, c_setpidp, c_bear};
 
-VFP cmd_imp[10]={c_info, c_info, c_info, c_info, c_info, c_info, c_info, c_info, c_info, c_info};
+VFP cmd_imp[10]={c_info, c_reset, c_info, c_info, c_info, c_info, c_info, c_info, c_info, c_info};
 
 const char *CMDS="INFO\0RST\0SYSL\0POS\0RSTMPU\0D\0S\0M\0SPP\0B\0";
 enum CMDS_ID {CMD_INFO=0, CMD_RESET=1, CMD_SETSYSLOG=2, CMD_POS=3, CMD_RESET_MPU=4, CMD_DRIVE=5, CMD_STEER=6, CMD_MOVE=7, CMD_SETPIDP=8, CMD_BEAR=9};
@@ -176,15 +177,15 @@ int16_t _doCmd(StaticJsonDocument<256> & root, StaticJsonDocument<256> & rootOut
 }
 
 int16_t c_info(StaticJsonDocument<256>& /*root*/, StaticJsonDocument<256>& rootOut) {
-  float voltage = ((float)rom_phy_get_vdd33()) / 1000;
+  //float voltage = ((float)rom_phy_get_vdd33()) / 1000;
   //Serial.println("INFO"); 
-  //rootOut["MST"]=MpuDrv::Mpu.getStatus();
-  //rootOut["MDR"]=MpuDrv::Mpu.isDataReady();
+  rootOut["MST"]=xIMU.getStatus();
+  rootOut["MDR"]=xIMU.isDataReady();
   // rootOut["MST"]=Controller::ControllerProc.getIMUStatus();
   // rootOut["CST"]=Controller::ControllerProc.getStatus() ? 0 : 6; // tmp
   rootOut["FHS"]=ESP.getFreeHeap();
-  rootOut["FSS"]=ESP.getFreeSketchSpace();
-  rootOut["VCC"]=(int16_t)(voltage*100);  
+  //rootOut["FSS"]=ESP.getFreeSketchSpace();
+  //rootOut["VCC"]=(int16_t)(voltage*100);  
   rootOut["WP"]=(int16_t)(WiFi.RSSI());
   // rootOut["MDC"]=Stat::StatStore.cycle_mpu_dry_cnt;
   // rootOut["MOC"]=Stat::StatStore.mpu_owfl_cnt;
@@ -197,12 +198,12 @@ int16_t c_info(StaticJsonDocument<256>& /*root*/, StaticJsonDocument<256>& rootO
 }
 
 
-// int16_t c_reset(JsonObject& /*root*/, JsonObject& /*rootOut*/) {
-//   Serial.println(F("Resetting...")); 
-//   delay(1000);
-//   ESP.restart();
-//   return 0;
-// }
+int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&) {
+  xLogger.vAddLogMsg("Resetting...");
+  vTaskDelay(1000); 
+  ESP.restart();
+  return 0;
+}
 
 
 // int16_t c_setsyslog(JsonObject& root, JsonObject& /*rootOut*/) {
