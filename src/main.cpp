@@ -36,7 +36,7 @@ const int OLED_RESET     = -1; // Reset pin # (or -1 if sharing Arduino reset pi
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-//#define xIMU MpuDrv::Mpu 
+
 //MpuDrv xIMU;
 MpuDrv& xIMU = MpuDrv::Mpu;
 
@@ -146,7 +146,7 @@ static void vWiFiTask(void *pvParameters) {
       } else {
         xLogger.vAddLogMsg("Failed to init UDP socket!");
         delay(1000);
-        //ESP.reset();
+        ESP.restart();
       } 
 
     for (;;) {

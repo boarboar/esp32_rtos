@@ -11,8 +11,6 @@
 
 #include "cmd.h"
 
-//extern "C" int rom_phy_get_vdd33();
-
 extern ComLogger xLogger;
 extern MpuDrv& xIMU;
 
@@ -64,11 +62,11 @@ boolean CmdProc::read() {
   
   if (packetSize) {
 
-    xLogger.vAddLogMsg("UDP PSZ: ", packetSize);
+    //xLogger.vAddLogMsg("UDP PSZ: ", packetSize);
     int len = udp_rcv.read(packetBuffer, BUF_SZ);
     if(len>BUF_SZ-1) len=BUF_SZ-1;
     packetBuffer[len] = 0;    
-    xLogger.vAddLogMsg("UDP: ", packetBuffer);
+    //xLogger.vAddLogMsg("UDP: ", packetBuffer);
       /*
       Serial.print("From: "); Serial.print(udp_rcv.remoteIP()); Serial.print(":"); Serial.print(udp_rcv.remotePort());
       Serial.print(" len: "); Serial.print(len);Serial.print(" Val: "); Serial.println(packetBuffer);
@@ -177,15 +175,12 @@ int16_t _doCmd(StaticJsonDocument<256> & root, StaticJsonDocument<256> & rootOut
 }
 
 int16_t c_info(StaticJsonDocument<256>& /*root*/, StaticJsonDocument<256>& rootOut) {
-  //float voltage = ((float)rom_phy_get_vdd33()) / 1000;
-  //Serial.println("INFO"); 
   rootOut["MST"]=xIMU.getStatus();
   rootOut["MDR"]=xIMU.isDataReady();
   // rootOut["MST"]=Controller::ControllerProc.getIMUStatus();
   // rootOut["CST"]=Controller::ControllerProc.getStatus() ? 0 : 6; // tmp
   rootOut["FHS"]=ESP.getFreeHeap();
-  //rootOut["FSS"]=ESP.getFreeSketchSpace();
-  //rootOut["VCC"]=(int16_t)(voltage*100);  
+  //rootOut["FSS"]=ESP.getFreeSketchSpace();  
   rootOut["WP"]=(int16_t)(WiFi.RSSI());
   // rootOut["MDC"]=Stat::StatStore.cycle_mpu_dry_cnt;
   // rootOut["MOC"]=Stat::StatStore.mpu_owfl_cnt;
