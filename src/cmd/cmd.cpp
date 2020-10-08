@@ -21,9 +21,9 @@ typedef int16_t (*VFP)(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 int16_t _doCmd(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 int16_t c_info(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
-// int16_t c_setsyslog(JsonObject&,JsonObject&);
-// int16_t c_getpos(JsonObject&,JsonObject&);
-// int16_t c_resetMPU(JsonObject&,JsonObject&);
+int16_t c_setsyslog(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
+int16_t c_getpos(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
+int16_t c_resetMPU(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 // int16_t c_drive(JsonObject&,JsonObject&);
 // int16_t c_steer(JsonObject&,JsonObject&);
 // int16_t c_move(JsonObject&,JsonObject&);
@@ -32,7 +32,7 @@ int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&);
 
 //VFP cmd_imp[10]={c_info, c_reset, c_setsyslog, c_getpos, c_resetMPU, c_drive, c_steer, c_move, c_setpidp, c_bear};
 
-VFP cmd_imp[10]={c_info, c_reset, c_info, c_info, c_info, c_info, c_info, c_info, c_info, c_info};
+VFP cmd_imp[10]={c_info, c_reset, c_setsyslog, c_getpos, c_resetMPU, c_info, c_info, c_info, c_info, c_info};
 
 const char *CMDS="INFO\0RST\0SYSL\0POS\0RSTMPU\0D\0S\0M\0SPP\0B\0";
 enum CMDS_ID {CMD_INFO=0, CMD_RESET=1, CMD_SETSYSLOG=2, CMD_POS=3, CMD_RESET_MPU=4, CMD_DRIVE=5, CMD_STEER=6, CMD_MOVE=7, CMD_SETPIDP=8, CMD_BEAR=9};
@@ -102,6 +102,24 @@ int16_t CmdProc::doCmd() {
   return !error;
 }
 
+
+bool CmdProc::setSysLog(StaticJsonDocument<256> &in) {
+  char buf[16];
+  uint8_t on = in["ON"];
+  int16_t port = in["PORT"];
+  const char* addr = in["ADDR"];
+  IPAddress newaddr;
+  if(on && !(port && addr && *addr && WiFi.hostByName(addr, newaddr))) return false;    
+  if(log_addr==newaddr && log_port==port && log_on==on) return true; // nothing to change
+  log_addr=newaddr;
+  log_port=port;
+  strcpy(buf, ":");
+  s_itoa16_cat(port, buf, 16);
+  if(!log_on) sstrncat(buf, " off", 16);
+  xLogger.vAddLogMsg("Syslog set to ", buf);
+  return true;
+}
+
 /*
 int16_t CmdProc::getSysLogLevel() { return CfgDrv::Cfg.log_on;}
 
@@ -140,14 +158,16 @@ boolean CmdProc::sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t 
   _sendToSysLog(rootOut);
   return true;
 }
-  
-void CmdProc::_sendToSysLog(JsonObject& rootOut) {
-  rootOut.printTo(packetBuffer, BUF_SZ-1);
-  udp_snd.beginPacket(CfgDrv::Cfg.log_addr, CfgDrv::Cfg.log_port);
-  udp_snd.write(packetBuffer, strlen(packetBuffer));
+ */
+
+void CmdProc::_sendToSysLog(StaticJsonDocument<256> &out) {
+  if(!log_on || !log_port) return;
+  serializeJson(out, prtBuffer, BUF_SZ-1);
+  udp_snd.beginPacket(log_addr, log_port);
+  udp_snd.write((uint8_t *)prtBuffer, strlen(prtBuffer));
   udp_snd.endPacket();  
 }
-*/
+
 
 int16_t _doCmd(StaticJsonDocument<256> & root, StaticJsonDocument<256> & rootOut) {  
   rootOut["T"] = xTaskGetTickCount();
@@ -201,9 +221,9 @@ int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&) {
 }
 
 
-// int16_t c_setsyslog(JsonObject& root, JsonObject& /*rootOut*/) {
-//   return CfgDrv::Cfg.setSysLog(root) ? 0 : -3;
-// }
+ int16_t c_setsyslog(StaticJsonDocument<256>&in,StaticJsonDocument<256>&) {
+  return CmdProc::Cmd.setSysLog(in) ? 0 : -3;
+ }
 
 // int16_t c_setpidp(JsonObject& root, JsonObject& /*rootOut*/) {
 //   if(CfgDrv::Cfg.setPidParams(root)) {
@@ -213,45 +233,52 @@ int16_t c_reset(StaticJsonDocument<256>&,StaticJsonDocument<256>&) {
 //   return -3;
 // }
 
-// int16_t c_resetMPU(JsonObject& root, JsonObject& rootOut) {
-//   const char *action=root["A"];
-//   if(!action || !*action) return -3;
-//   if(!strcmp(action, "MPU")) {
-//     Serial.println(F("Req to RST MPU/CTL...")); 
-//     Controller::ControllerProc.setReset(Controller::CTL_RST_IMU);
-//   } else if(!strcmp(action, "MPU_INT")) {
-//     Serial.println(F("Resetting MPU/CTL integrator...")); 
-//     //MpuDrv::Mpu.resetIntegrator();
-//     //Controller::ControllerProc.resetIntegrator();
-//     Controller::ControllerProc.setReset(Controller::CTL_RST_CTL);
-//   } else return -3;
+int16_t c_resetMPU(StaticJsonDocument<256>& in,StaticJsonDocument<256>&) {
+  const char *action=in["A"];
+  if(!action || !*action) return -3;
+  if(!strcmp(action, "MPU")) {
+    Serial.println(F("Req to RST MPU/CTL...")); 
+    // TODO Controller::ControllerProc.setReset(Controller::CTL_RST_IMU);
+  } else if(!strcmp(action, "MPU_INT")) {
+    Serial.println(F("Resetting MPU/CTL integrator...")); 
+    //MpuDrv::Mpu.resetIntegrator();
+    //Controller::ControllerProc.resetIntegrator();
+    // TODO Controller::ControllerProc.setReset(Controller::CTL_RST_CTL);
+  } else return -3;
 
-//   return 0;
-// }
+  return 0;
+}
 
 
-// int16_t c_getpos(JsonObject& /*root*/, JsonObject& rootOut) {
-//   //{"C": "I", "T":12345, "R":0, "C": "POS", "YPR": [59, 12, 13], "A": [0.01, 0.02, -0.03], "P": [100.01, 200.44, 0.445]}
-//   int16_t i;
-//   rootOut["MST"]=Controller::ControllerProc.getIMUStatus();
-//   JsonArray& ya = rootOut.createNestedArray("YPR");
-//   ya.add(Controller::ControllerProc.getYaw_grad());
-//   ya.add(0);
-//   ya.add(0);
-//   JsonArray& r = rootOut.createNestedArray("CRD");
-//   r.add(Controller::ControllerProc.getX_cm());
-//   r.add(Controller::ControllerProc.getY_cm());
-//   r.add(0); // Z-crd
-//   JsonArray& pw = rootOut.createNestedArray("W");
-//   int16_t *pwrs=Controller::ControllerProc.getPower();
-//   pw.add(pwrs[0]), pw.add(pwrs[1]);   
-//   uint8_t ns=Controller::ControllerProc.getNumSensors();
-//   JsonArray& s = rootOut.createNestedArray("S");
-//   for(i=0; i<ns; i++) s.add((int)Controller::ControllerProc.getSensors()[i]);
-//   rootOut["D"]=Controller::ControllerProc.getDist_cm();
-//   rootOut["V"]=Controller::ControllerProc.getSpeed_cmps();
-//   return 0;
-// }
+int16_t c_getpos(StaticJsonDocument<256>&,StaticJsonDocument<256>&out) {
+  //{"C": "I", "T":12345, "R":0, "C": "POS", "YPR": [59, 12, 13], "A": [0.01, 0.02, -0.03], "P": [100.01, 200.44, 0.445]}
+  int16_t i;
+  float ypr[3]={0, 0, 0};
+  if(xIMU.Acquire()) {      
+    xIMU.getAll(ypr, NULL, NULL);
+    xIMU.Release();
+  }
+  out["MST"]=xIMU.getStatus();
+  JsonArray ya = out.createNestedArray("YPR");
+  for (i=0; i<3; i++) {
+    ya.add((int)(ypr[i]*180.0 / PI));
+  }
+
+  
+  // JsonArray& r = rootOut.createNestedArray("CRD");
+  // r.add(Controller::ControllerProc.getX_cm());
+  // r.add(Controller::ControllerProc.getY_cm());
+  // r.add(0); // Z-crd
+  // JsonArray& pw = rootOut.createNestedArray("W");
+  // int16_t *pwrs=Controller::ControllerProc.getPower();
+  // pw.add(pwrs[0]), pw.add(pwrs[1]);   
+  // uint8_t ns=Controller::ControllerProc.getNumSensors();
+  // JsonArray& s = rootOut.createNestedArray("S");
+  // for(i=0; i<ns; i++) s.add((int)Controller::ControllerProc.getSensors()[i]);
+  // rootOut["D"]=Controller::ControllerProc.getDist_cm();
+  // rootOut["V"]=Controller::ControllerProc.getSpeed_cmps();
+  return 0;
+}
 
 // int16_t c_drive(JsonObject& root, JsonObject& rootOut) {
 //   if(!Controller::ControllerProc.getStatus()) return -5;

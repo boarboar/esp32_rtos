@@ -19,17 +19,21 @@ public:
   boolean connected();
   boolean read();
   void  respond();
+  bool  setSysLog(StaticJsonDocument<256> &in);
   // int16_t getSysLogLevel();
   // boolean sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t code, int8_t npa=0, int16_t *pa=NULL);
   // boolean sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t code, const char *s);
 protected:
-  CmdProc() : isConnected(false) {;}
-  void _sendToSysLog(JsonObject& rootOut);
+  CmdProc() : isConnected(false), log_on(0), log_port(0) {;}
+  void _sendToSysLog(StaticJsonDocument<256> &out);
   char packetBuffer[BUF_SZ];
   char prtBuffer[BUF_SZ];
   bool isConnected;
   WiFiUDP udp_rcv;
   WiFiUDP udp_snd;
+  IPAddress log_addr;
+  uint8_t log_on;
+  uint16_t log_port;
 };
 
 #endif //_UMP_CMD_H_
