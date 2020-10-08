@@ -104,7 +104,7 @@ int16_t CmdProc::doCmd() {
 
 
 bool CmdProc::setSysLog(StaticJsonDocument<256> &in) {
-  char buf[16];
+  char buf[32];
   uint8_t on = in["ON"];
   int16_t port = in["PORT"];
   const char* addr = in["ADDR"];
@@ -113,9 +113,11 @@ bool CmdProc::setSysLog(StaticJsonDocument<256> &in) {
   if(log_addr==newaddr && log_port==port && log_on==on) return true; // nothing to change
   log_addr=newaddr;
   log_port=port;
-  strcpy(buf, ":");
-  s_itoa16_cat(port, buf, 16);
-  if(!log_on) sstrncat(buf, " off", 16);
+  log_on = on;
+  strcpy(buf, addr);
+  sstrncat(buf, ":", 32);
+  s_itoa16_cat(port, buf, 32);
+  if(!log_on) sstrncat(buf, " off", 32);
   xLogger.vAddLogMsg("Syslog set to ", buf);
   return true;
 }

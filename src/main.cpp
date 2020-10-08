@@ -118,6 +118,9 @@ static void vSerialOutTask(void *pvParameters) {
 }
 
 static void vWiFiTask(void *pvParameters) {
+
+  //esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle()); // add to WDT
+  //xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID(), " WDT ", err);
   xLogger.vAddLogMsg("WiFi Task started on core# ", xPortGetCoreID());
 
   for (;;) {   
@@ -129,6 +132,7 @@ static void vWiFiTask(void *pvParameters) {
     while (WiFi.status() != WL_CONNECTED && i++ < 20) { 
       vTaskDelay(400); 
       xLogger.vAddLogMsg("Connecting...");
+      //esp_task_wdt_reset(); // reset WDT
       }
     
     if(WiFi.status() != WL_CONNECTED) {
@@ -187,7 +191,7 @@ static void vMotionTask(void *pvParameters) {
 static void vI2C_Task(void *pvParameters) {
     int16_t mpu_res=0; 
     int16_t cnt = 0;   
-    esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle()); // add to WDT
     xLogger.vAddLogMsg("I2C task started on core# ", xPortGetCoreID(), " WDT ", err); 
 
     for (;;) { 
