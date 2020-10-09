@@ -47,7 +47,12 @@ enum CMDS_ID {CMD_INFO=0, CMD_RESET=1, CMD_SETSYSLOG=2, CMD_POS=3, CMD_RESET_MPU
 // {"I":1,"C":"SPP","P":1,"PA":[30, 320, 10, 80, 100],"S":0}
 // {"I":1,"C":"B","A":45}
 
-int16_t CmdProc::init(uint16_t port) {
+int16_t CmdProc::Init() {
+  xEventQueue = xQueueCreate( CMD_EVENT_Q_SZ, sizeof( struct QEvent ) );
+  return 0;
+}   
+
+int16_t CmdProc::Listen(uint16_t port) {
   if(udp_rcv.begin(port)) {
     isConnected=true;
     return 1;
@@ -102,6 +107,19 @@ int16_t CmdProc::doCmd() {
   return !error;
 }
 
+void CmdProc::doEvents() {
+  while( xQueueReceive( xEventQueue, &rxEvent, ( TickType_t ) 0 ) )
+  {
+    StaticJsonDocument<256> rootOut;
+    rootOut["C"] = rxEvent.uLevel>CMD_LLEVEL_ALR ? "L" : "A";
+    rootOut["T"] = millis();
+    rootOut["I"] = rxEvent.uId;
+    rootOut["M"] = rxEvent.uModule;
+    rootOut["F"] = rxEvent.uCode;
+    rootOut["S"] = rxEvent.ucData;
+    _sendToSysLog(rootOut);
+  }   
+}
 
 bool CmdProc::setSysLog(StaticJsonDocument<256> &in) {
   char buf[32];
@@ -122,20 +140,19 @@ bool CmdProc::setSysLog(StaticJsonDocument<256> &in) {
   return true;
 }
 
-/*
-int16_t CmdProc::getSysLogLevel() { return CfgDrv::Cfg.log_on;}
 
+//int16_t CmdProc::getSysLogLevel() { return CfgDrv::Cfg.log_on;}
+/*
 boolean CmdProc::sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t code, int8_t npa, int16_t *pa) {
   //if(CfgDrv::Cfg.log_on<SL_LEVEL_ALARM) return false; //!!! should be adjusted with level
-  StaticJsonBuffer<400> jsonBufferOut;
-  JsonObject& rootOut = jsonBufferOut.createObject();
+  StaticJsonDocument<256> rootOut;
   rootOut["C"] = level>CMD_LLEVEL_ALR ? "L" : "A";
   rootOut["T"] = millis();
   rootOut["I"] = id;
   rootOut["M"] = module;
   rootOut["F"] = code;
   if(pa && npa) {
-    JsonArray& par = rootOut.createNestedArray("P");
+    JsonArray par = rootOut.createNestedArray("P");
     uint8_t mpa=npa-1;
     while(mpa && pa[mpa]) mpa--;
     if(mpa) {
@@ -149,8 +166,7 @@ boolean CmdProc::sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t 
 
 boolean CmdProc::sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t code, const char *s) {
   //if(CfgDrv::Cfg.log_on<SL_LEVEL_ALARM) return false; //!!! should be adjusted with level
-  StaticJsonBuffer<400> jsonBufferOut;
-  JsonObject& rootOut = jsonBufferOut.createObject();
+  StaticJsonDocument<256> rootOut;
   rootOut["C"] = level>CMD_LLEVEL_ALR ? "L" : "A";
   rootOut["T"] = millis();
   rootOut["I"] = id;
@@ -160,7 +176,23 @@ boolean CmdProc::sendEvent(uint16_t id, uint8_t module,  uint8_t level, uint8_t 
   _sendToSysLog(rootOut);
   return true;
 }
- */
+*/
+
+boolean CmdProc::putEvent(uint8_t module,  uint8_t level, uint8_t code, const char *s) {
+  //if(CfgDrv::Cfg.log_on<SL_LEVEL_ALARM) return false; //!!! should be adjusted with level
+  if(!log_on) return true;
+  QEvent txEvent;
+  if(s) 
+    strncpy(txEvent.ucData, s, EVENT_BUF_SZ);          
+  else *txEvent.ucData=0;  
+  txEvent.uModule = module;
+  txEvent.uLevel = level;
+  txEvent.uCode = code;
+  txEvent.uId = ++event_id;
+  xQueueSendToBack( xEventQueue, ( void * ) &txEvent, ( TickType_t ) 0 );          
+
+  return true;
+}
 
 void CmdProc::_sendToSysLog(StaticJsonDocument<256> &out) {
   if(!log_on || !log_port) return;

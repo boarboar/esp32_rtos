@@ -145,7 +145,7 @@ static void vWiFiTask(void *pvParameters) {
       xLogger.vAddLogMsg("With IP ", szIP);
     }
 
-    if(cmd.init(udp_port)) {
+    if(cmd.Listen(udp_port)) {
         xLogger.vAddLogMsg("UDP listening on ", udp_port);
       } else {
         xLogger.vAddLogMsg("Failed to init UDP socket!");
@@ -163,8 +163,10 @@ static void vWiFiTask(void *pvParameters) {
       {
         if (cmd.read()) {
           cmd.doCmd();      
-          yield(); 
-          cmd.respond();      
+          //yield(); 
+          cmd.respond();     
+          yield();
+          cmd.doEvents(); 
         }
       }
     }
@@ -173,7 +175,8 @@ static void vWiFiTask(void *pvParameters) {
 
 static void vMotionTask(void *pvParameters) {
     //int16_t val[16];
-    xLogger.vAddLogMsg("Motion task started on core# ", xPortGetCoreID());    
+    xLogger.vAddLogMsg("Motion task started on core# ", xPortGetCoreID());  
+    
     for (;;) { 
       vTaskDelay(200); 
       //float yaw=0;
@@ -207,6 +210,7 @@ static void vI2C_Task(void *pvParameters) {
         // IMU settled
         fMPUReady=true;
         xLogger.vAddLogMsg("IMU settled!");    
+        cmd.putEvent(1, 3, 4, "IMU Settled");  
         xTaskCreate(vMotionTask, "TaskMotion", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
         //break;
       }
@@ -299,6 +303,7 @@ void setup() {
 
   xLogger.Init();
   xIMU.init();
+  cmd.Init();
 
   xDisplayMutex = xSemaphoreCreateMutex();
 
