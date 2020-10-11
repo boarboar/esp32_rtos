@@ -95,7 +95,8 @@ void displayUpdate() {
     if(fMPUReady) {
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
-        s_itoa16_cat((int)(ypr[i]*180.0 / PI), buf, 64);
+        //s_itoa16_cat((int)(ypr[i]*180.0 / PI), buf, 64);
+        s_ftoa2_cat(ypr[i]*180.0 / PI, buf, 64);
         strcat(buf, " ");
       }
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
@@ -164,10 +165,9 @@ static void vWiFiTask(void *pvParameters) {
         if (cmd.read()) {
           cmd.doCmd();      
           //yield(); 
-          cmd.respond();     
-          yield();
-          cmd.doEvents(); 
+          cmd.respond(); 
         }
+         cmd.doEvents(); 
       }
     }
   }

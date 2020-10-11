@@ -31,15 +31,21 @@ class ComLogger {
 
 void _itoa(int n, char s[], int zn=0);
 void _ltoa(int32_t n, char s[], int zn=0);
+void _ftoa2(float n, char s[]);
 
 inline void itoa_cat(int n, char s[], int zn=0) { _itoa(n, s+strlen(s), zn); }
 inline void ltoa_cat(int n, char s[], int zn=0) { _ltoa(n, s+strlen(s), zn); }
+inline void ftoa2_cat(float f, char s[], int zn=0) { _ftoa2(f, s+strlen(s)); }
 inline void sstrncat(char dst[], const char src[], int len) {strncat(dst, src, len-strlen(dst)-1);}
-inline void s_itoa16_cat(int16_t n, char dst[], int len, int zn=0) {\
-  int sl = strlen(dst);\
-  if(len-sl-1 < max(6, zn)) return; else _itoa(n, dst+sl, zn);\
+inline void s_itoa16_cat(int16_t n, char dst[], int len, int zn=0) {
+  int sl = strlen(dst);
+  if(len-sl-1 < max(6, zn)) return; else _itoa(n, dst+sl, zn);
 }
-inline void s_itoa32_cat(int32_t n, char dst[], int len, int zn=0) {\
-  int sl = strlen(dst);\
-  if(len-sl-1 < max(11, zn)) return; else _ltoa(n, dst+sl, zn);\
+inline void s_itoa32_cat(int32_t n, char dst[], int len, int zn=0) {
+  int sl = strlen(dst);
+  if(len-sl-1 < max(11, zn)) return; else _ltoa(n, dst+sl, zn);
+}
+inline void s_ftoa2_cat(float f, char dst[], int len) {
+  int sl = strlen(dst);
+  if(len-sl-1 < 14) return; else _ftoa2(f, dst+sl);
 }

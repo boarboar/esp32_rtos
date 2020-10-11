@@ -216,3 +216,9 @@ void _ltoa(int32_t n, char s[], int zn)
      reverse(s);
 }  
 
+void _ftoa2(float f, char s[]) {
+  int32_t l = (int32_t)(f * 10.0);
+  _ltoa(l/10, s);
+  strcat(s, ".");
+  itoa_cat(abs(l)%10, s, 1);
+}
