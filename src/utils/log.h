@@ -17,15 +17,18 @@ class ComLogger {
   
   struct AMessage
   {
-    char ucMessageID;
+    unsigned char ucMessageID;
     TickType_t xTick;
     char ucData[ CLOG_MSG_SZ ];
   };
-  struct AMessage txMessage;
+  
+  //struct AMessage txMessage;
   struct AMessage rxMessage;
   QueueHandle_t xLogQueue;
-  xSemaphoreHandle xLogFree;
+  //xSemaphoreHandle xLogFree;
   unsigned char ucLastProcMsgID;
+  unsigned char ucMessageID;
+
   char prtbuf[ CLOG_PB_SZ ];
 };
 
