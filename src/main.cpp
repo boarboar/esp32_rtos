@@ -96,7 +96,7 @@ void displayUpdate() {
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
         //s_itoa16_cat((int)(ypr[i]*180.0 / PI), buf, 64);
-        s_ftoa2_cat(ypr[i]*180.0 / PI, buf, 64);
+        s_ftoa_cat(ypr[i]*180.0 / PI, buf, 64);
         strcat(buf, " ");
       }
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
