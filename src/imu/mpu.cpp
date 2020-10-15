@@ -43,7 +43,7 @@ int16_t MpuDrv::cycle_dt()
   return res;      
 }
 
-int16_t MpuDrv::init() {
+int16_t MpuDrv::init(bool integrate) {
   vSemaphoreCreateBinary(xIMUFree);      
   dmpStatus=ST_0;
   data_ready=0;
@@ -51,6 +51,7 @@ int16_t MpuDrv::init() {
   count=0;
   conv_count=0;
   need_reset=0;
+  this->integrate = integrate;
 
   for(int i=0; i<MPU_FAIL_CNT_SZ; i++) fail_cnt[i]=0;
   resetIntegrator();

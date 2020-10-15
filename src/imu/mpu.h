@@ -15,8 +15,8 @@ class MpuDrv {
   static const int8_t ST_READY=1;
   //static const int16_t QUAT_INIT_TOL=10; 
   //static const int16_t ACC_INIT_TOL=10;
-  static const int16_t QUAT_INIT_TOL=16; 
-  static const int16_t ACC_INIT_TOL=20;
+  static const int16_t QUAT_INIT_TOL=12; 
+  static const int16_t ACC_INIT_TOL=16;
   static const int16_t INIT_PERIOD_MIN=20;
   static const int16_t INIT_PERIOD_MAX=60;
   //enum FailReason {MPU_FAIL_NONE=0, MPU_FAIL_INIT=1, MPU_FAIL_NODATA=2, MPU_FAIL_FIFOOVFL=3, MPU_FAIL_FIFOTMO=4, MPU_FAIL_FIFOEXCESS=5, MPU_FAIL_CONVTMO=6, MPU_FAIL_INIT_OK=128};
@@ -26,7 +26,7 @@ public:
   static MpuDrv Mpu; // singleton  
   //int16_t init(/*uint16_t sda, uint16_t sdl,*/ uint16_t intr);
   //MpuDrv();
-  int16_t init();
+  int16_t init(bool integrate = false);
 
   bool Acquire();
   void Release();

@@ -91,7 +91,12 @@ void displayUpdate() {
     char buf[64];
     display.clearDisplay(); 
     display.setCursor(0,0);
-    strcpy(buf, "YPR: ");
+    strcpy(buf, "IP: ");
+    strncat(buf, szIP, 32);
+    display.print(buf);
+
+    display.setCursor(0,16);
+    strcpy(buf, "Y: ");
     if(fMPUReady) {
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
@@ -102,10 +107,7 @@ void displayUpdate() {
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
     }
     display.print(buf);
-    display.setCursor(0,16);
-    strcpy(buf, "IP: ");
-    strncat(buf, szIP, 32);
-    display.print(buf);
+    
     fDisplayUpdated = true;
 }
 
@@ -302,7 +304,7 @@ void setup() {
   Serial.println();
 
   xLogger.Init();
-  xIMU.init();
+  xIMU.init(true);
   cmd.Init();
 
   xDisplayMutex = xSemaphoreCreateMutex();
