@@ -104,6 +104,23 @@ void ComLogger::vAddLogMsg(const char *pucMsg1, int32_t i1, int32_t i2, int32_t 
   xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
 }
 
+
+void ComLogger::vAddLogMsg(const char *pucMsg1, float f1, float f2, float f3) {
+  struct AMessage txMessage;
+  txMessage.ucMessageID = ++ucMessageID;
+  if(pucMsg1) 
+    strncpy(txMessage.ucData, pucMsg1, CLOG_MSG_SZ);          
+  else *txMessage.ucData=0;  
+  sstrncat(txMessage.ucData, ":", CLOG_MSG_SZ);          
+  s_ftoa_cat(f1, txMessage.ucData, CLOG_MSG_SZ);
+  sstrncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
+  s_ftoa_cat(f2, txMessage.ucData, CLOG_MSG_SZ);
+  sstrncat(txMessage.ucData, ",", CLOG_MSG_SZ);          
+  s_ftoa_cat(f3, txMessage.ucData, CLOG_MSG_SZ);
+  txMessage.xTick = xTaskGetTickCount();
+  xQueueSendToBack( xLogQueue, ( void * ) &txMessage, ( TickType_t ) 0 );          
+}
+
 void ComLogger::Process() {  
   const long mss = 1000;
   const long msm = 60*mss;

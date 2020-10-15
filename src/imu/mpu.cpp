@@ -6,6 +6,7 @@
 
 //#define SCALE_A (2.0f*8192.0f) // 1g = (9.80665 m/s^2)
 #define SCALE_A (8192.0f) // 1g = (9.80665 m/s^2)
+
 #define G_FORCE 9.80665f
 #define G_SCALE (G_FORCE/SCALE_A)
 #define A_K 0.3f
@@ -14,12 +15,10 @@
 // MPF 3
 
 extern ComLogger xLogger;
-//extern CommManager xCommMgr;
 
 MpuDrv MpuDrv::Mpu; // singleton
 
-MpuDrv::MpuDrv() : dmpStatus(ST_0) {
-  //vSemaphoreCreateBinary(xIMUFree); // can not do this in constructor!!!    
+MpuDrv::MpuDrv() : dmpStatus(ST_0), integrate(false) {
   }
 
 int8_t MpuDrv::getStatus() { return dmpStatus; }
@@ -44,11 +43,8 @@ int16_t MpuDrv::cycle_dt()
   return res;      
 }
 
-
 int16_t MpuDrv::init() {
-  
-  vSemaphoreCreateBinary(xIMUFree);    
-  
+  vSemaphoreCreateBinary(xIMUFree);      
   dmpStatus=ST_0;
   data_ready=0;
   fifoCount=0;
@@ -72,10 +68,8 @@ int16_t MpuDrv::init() {
   // load and configure the DMP  
   xLogger.vAddLogMsg("Init DMP...");
 
-  //yield();
   uint8_t devStatus = mpu.dmpInitialize();
 
-  //yield();  
   if (devStatus == 0) {
     // supply your own gyro offsets here, scaled for min sensitivity
     mpu.setXGyroOffset(220);
@@ -87,17 +81,12 @@ int16_t MpuDrv::init() {
     xLogger.vAddLogMsg("Enab DMP...");
     mpu.setDMPEnabled(true);
 
-    // enable Arduino interrupt detection
-    //      Serial.println(F("Enab intr..."));
-    //      attachInterrupt(INT_PIN, dmpDataReady, RISING);
-    //mpuIntStatus = mpu.getIntStatus();
-
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
     // enter warmup/convergence stage 
     dmpStatus=ST_WUP;
-    //start=millis();
     xStart=xLastWakeTime=xTaskGetTickCount();
+
     // TODO// xCommMgr.vAddAlarm(CommManager::CM_EVENT, CommManager::CM_MODULE_IMU, MPU_FAIL_INIT, 0); 
     xLogger.vAddLogMsg("DMP ok!"); //Serial.println(packetSize);    
   } else {
@@ -115,7 +104,7 @@ int16_t MpuDrv::init() {
   return dmpStatus;
 }
 
-int16_t MpuDrv::cycle(uint16_t /*dt*/) {
+int16_t MpuDrv::cycle(uint16_t dt) {
   uint8_t i=0;
   bool settled=false;
   if (dmpStatus==ST_0 || dmpStatus==ST_FAIL) return -1;
@@ -129,7 +118,6 @@ int16_t MpuDrv::cycle(uint16_t /*dt*/) {
     fail_cnt[MPU_FAIL_NODATA_IDX]++;
     return -10;
   }
-
 
 /*
     // wait for MPU interrupt or extra packet(s) available
@@ -203,7 +191,6 @@ int16_t MpuDrv::cycle(uint16_t /*dt*/) {
         
    if(settled) {
       xLogger.vAddLogMsg("MPU converged");
-      //start=micros();
       dmpStatus=ST_READY;        
       //xLastWakeTime=xTaskGetTickCount();
       // TODO// xCommMgr.vAddAlarm(CommManager::CM_EVENT, CommManager::CM_MODULE_IMU, MPU_FAIL_CONVTMO, 0);       
@@ -213,44 +200,40 @@ int16_t MpuDrv::cycle(uint16_t /*dt*/) {
   count++; 
   
   if(dmpStatus==ST_READY) {
-     //uint32_t mcs=micros();
-     /*
-#ifdef IMU_USE_INTEGRATION    
-    // =======actually, this is not needed if we do not use IMU accel-based integration integration
-    // integrate motion
-    Quaternion q, q0;
-    VectorFloat ga;    
-    VectorInt16 aaReal, aaWorld;
-    
-    float ts;
-    // get world frame accel (with adjustment) - needed for V-integration
-    mpu.dmpGetQuaternion(&q, q16);
-    mpu.dmpGetQuaternion(&q0, q16_0);
-    q0=q0.getConjugate();
-    q=q0.getProduct(q); // real quaternion (relative to base)
-    mpu.dmpGetGravity(&ga, &q);
-    mpu.dmpGetLinearAccel(&aaReal, &aa16, &ga);
-    mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);      
-    //a.x=aaWorld.x*G_SCALE; a.y=aaWorld.y*G_SCALE; a.z=aaWorld.z*G_SCALE;      
-    ga.x=aaWorld.x*G_SCALE; ga.y=aaWorld.y*G_SCALE; ga.z=aaWorld.z*G_SCALE;      
-    if(settled) { // first time only - store base accel
-      //a0=a;
-      a0=ga;
-      DbgPrintVectorFloat("A Base (m/s^2)\t", &a0);
-    }      
-    // adjust to base accel
-    //a.x-=a0.x; a.y-=a0.y; a.z-=a0.z;
-    ga.x-=a0.x; ga.y-=a0.y; ga.z-=a0.z;
-    // low-pass filter for acceleration
-    a.x = a.x - A_K * (a.x - ga.x);
-    a.y = a.y - A_K * (a.y - ga.y);
-    a.z = a.z - A_K * (a.z - ga.z);
-    ts=(float)(micros()-start)/1000000.0f;
-    v.x+=a.x*ts; v.y+=a.y*ts; v.z+=a.z*ts;
-//      r.x+=v.x*ts; r.y+=v.y*ts; r.z+=v.z*ts;
-#endif
-*/
-    //start=mcs;
+    if(integrate) {
+      // =======actually, this is not needed if we do not use IMU accel-based integration integration
+      // integrate motion
+      Quaternion q, q0;
+      VectorFloat ga;    
+      VectorInt16 aaReal, aaWorld;
+      
+      float ts;
+      // get world frame accel (with adjustment) - needed for V-integration
+      mpu.dmpGetQuaternion(&q, q16);
+      mpu.dmpGetQuaternion(&q0, q16_0);
+      q0=q0.getConjugate();
+      q=q0.getProduct(q); // real quaternion (relative to base)
+      mpu.dmpGetGravity(&ga, &q);
+      mpu.dmpGetLinearAccel(&aaReal, &aa16, &ga);
+      mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);      
+      //a.x=aaWorld.x*G_SCALE; a.y=aaWorld.y*G_SCALE; a.z=aaWorld.z*G_SCALE;      
+      ga.x=aaWorld.x*G_SCALE; ga.y=aaWorld.y*G_SCALE; ga.z=aaWorld.z*G_SCALE;      
+      if(settled) { // first time only - store base accel
+        //a0=a;
+        a0=ga;
+        xLogger.vAddLogMsg("A Base:", a0.x, a0.y, a0.z); // (m/s^2)   
+      }      
+      // adjust to base accel
+      //a.x-=a0.x; a.y-=a0.y; a.z-=a0.z;
+      ga.x-=a0.x; ga.y-=a0.y; ga.z-=a0.z;
+      // low-pass filter for acceleration
+      a.x = a.x - A_K * (a.x - ga.x);
+      a.y = a.y - A_K * (a.y - ga.y);
+      a.z = a.z - A_K * (a.z - ga.z);
+      ts=(float)dt/1000.0f;
+      v.x+=a.x*ts; v.y+=a.y*ts; v.z+=a.z*ts;
+  //      r.x+=v.x*ts; r.y+=v.y*ts; r.z+=v.z*ts;
+    }
     data_ready=1; 
     return settled ? 2 : 1;
   }      

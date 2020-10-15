@@ -31,7 +31,6 @@ public:
   bool Acquire();
   void Release();
   int16_t cycle_dt();
-  int16_t cycle(uint16_t dt);
   int8_t getStatus();
   uint8_t isDataReady();
   uint8_t isNeedReset();
@@ -44,9 +43,9 @@ public:
   float getYaw();
 protected:  
   MpuDrv();
+  int16_t cycle(uint16_t dt);
   // MPU control/status vars
   MPU6050 mpu;
-  //uint32_t start;
   int8_t dmpStatus; 
   uint8_t data_ready;
   uint8_t need_reset;
@@ -65,10 +64,8 @@ protected:
   VectorFloat a0; // base world accel
   VectorFloat a;
   VectorFloat v;
+  bool integrate;
   float ypr[3];
-  /*
-  volatile uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
-  */
   xSemaphoreHandle xIMUFree;
   TickType_t xLastWakeTime, xStart;
 };
