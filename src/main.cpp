@@ -50,6 +50,7 @@ boolean fDisplayUpdated=false;
 
 //float yaw=0;
 float ypr[3]={0, 0, 0};
+float v[3]={0, 0, 0};
 char szIP[16]="";
 
 void readFS() {
@@ -95,18 +96,25 @@ void displayUpdate() {
     strncat(buf, szIP, 32);
     display.print(buf);
 
-    display.setCursor(0,16);
-    strcpy(buf, "Y: ");
     if(fMPUReady) {
+      display.setCursor(0,16);
+      strcpy(buf, "Y: ");
       //itoa_cat((int)yaw, buf);
       for(int i=0; i<3; i++) {
         //s_itoa16_cat((int)(ypr[i]*180.0 / PI), buf, 64);
         s_ftoa_cat(ypr[i]*180.0 / PI, buf, 64);
         strcat(buf, " ");
       }
+      display.print(buf);
       //xLogger.vAddLogMsg("Yaw ", (int)yaw);
+      display.setCursor(0,32);
+      strcpy(buf, "V: ");
+      for(int i=0; i<3; i++) {
+        s_ftoa_cat(v[i], buf, 64);
+        strcat(buf, " ");
+      }
+      display.print(buf);
     }
-    display.print(buf);
     
     fDisplayUpdated = true;
 }
@@ -186,7 +194,7 @@ static void vMotionTask(void *pvParameters) {
       if(xIMU.Acquire()) {
         xIMU.process();           
         //yaw=xIMU.getYaw()*180.0 / PI;
-        xIMU.getAll(ypr, NULL, NULL);
+        xIMU.getAll(ypr, NULL, v);
         xIMU.Release();
         //xLogger.vAddLogMsg("Yaw ", yaw);
       }
